@@ -75,38 +75,52 @@ func sessionHandler(session ssh.Session) {
 	_, _, ok := session.Pty()
 	if ok {
 		handler := newInteractiveHandler(session, user)
-		var sessionExitSignal = make(chan bool, 0)
-		var mainCliLoopExitSignal = make(chan bool, 0)
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case exit := <-sessionExitSignal:
-					if exit {
-						close(sessionExitSignal)
-						mainCliLoopExitSignal <- true
-						return
-					}
-				}
-			}
-		}()
-
-		go handler.watchWinSizeChange()
-		go func() {
-			for {
-				select {
-				case <-mainCliLoopExitSignal:
+		handler.Initial()
+		var sessionExitSignal = make(chan bool, 1)
+		for {
+			select {
+			case exit := <-sessionExitSignal:
+				if exit {
 					return
-				default:
-					handler.Banner = newDefaultBanner()
-					handler.displayBanner()
+				} else {
 					handler.selectIDC(sessionExitSignal)
 				}
+			default:
+				handler.selectIDC(sessionExitSignal)
 			}
-		}()
-		wg.Wait()
+		}
+		//var sessionExitSignal = make(chan bool, 0)
+		//var mainCliLoopExitSignal = make(chan bool, 0)
+		//wg := sync.WaitGroup{}
+		//wg.Add(1)
+		//go func() {
+		//	defer wg.Done()
+		//	for {
+		//		select {
+		//		case exit := <-sessionExitSignal:
+		//			if exit {
+		//				close(sessionExitSignal)
+		//				mainCliLoopExitSignal <- true
+		//				return
+		//			}
+		//		}
+		//	}
+		//}()
+		//
+		//go handler.watchWinSizeChange()
+		//go func() {
+		//	for {
+		//		select {
+		//		case <-mainCliLoopExitSignal:
+		//			return
+		//		default:
+		//			handler.Banner = newDefaultBanner()
+		//			handler.displayBanner()
+		//			handler.selectIDC(sessionExitSignal)
+		//		}
+		//	}
+		//}()
+		//wg.Wait()
 	} else {
 		common.Log.Errorf("Couldn't to request pty for user: %s", user)
 	}
@@ -189,24 +203,33 @@ func (h *interactiveHandler) resumeWatchWinSize() {
 }
 
 func (h *interactiveHandler) selectIDC(sessionExitSignal chan bool) {
-	line, err := h.term.ReadLine()
-	if err != nil {
-		if err != io.EOF {
-			common.Log.Debug("User disconnected")
-		} else {
-			common.Log.Error("Read from user err: ", err)
+	for {
+		line, err := h.term.ReadLine()
+		if err != nil {
+			if err != io.EOF {
+				common.Log.Debug("User disconnected")
+			} else {
+				common.Log.Error("Read from user err: ", err)
+			}
+			return
 		}
-		return
-	}
-	line = strings.TrimSpace(line)
-	idcID, err := strconv.Atoi(line)
-	if err == nil && idcID >= 0 && idcID < len(IDCS) {
-		h.selectedIDC = IDCS[idcID]
-		h.Banner.setMainMenu(IDCS[idcID])
-		h.displayBanner()
-		h.Dispatch(sessionExitSignal)
-	} else {
-		_, _ = h.term.c.Write([]byte("输入的序号有误，请重新输入！\n"))
+		line = strings.TrimSpace(line)
+		switch line {
+		case "q":
+			sessionExitSignal <- true
+			return
+		default:
+			idcID, err := strconv.Atoi(line)
+			if err == nil && idcID >= 0 && idcID < len(IDCS) {
+				h.selectedIDC = IDCS[idcID]
+				h.Banner.setMainMenu(IDCS[idcID])
+				h.displayBanner()
+				h.Dispatch(sessionExitSignal)
+				return
+			} else {
+				_, _ = h.term.c.Write([]byte("输入的序号有误，请重新输入！\n"))
+			}
+		}
 	}
 }
 
@@ -238,6 +261,8 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 			case "h":
 				h.displayBanner()
 			case "r":
+				h.Banner = newDefaultBanner()
+				h.displayBanner()
 				sessionExitSignal <- false
 				return
 				//h.refreshAssetsAndNodesData()

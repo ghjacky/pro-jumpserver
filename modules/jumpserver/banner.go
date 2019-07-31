@@ -32,7 +32,7 @@ type Banner struct {
 }
 
 func newDefaultBanner() Banner {
-	defaultTitle := utils.WrapperTitle("欢迎使用跳板机") + utils.WrapperTitle("您已进入被监控状态") // +
+	defaultTitle := utils.WrapperTitle("欢迎使用跳板机, 您已进入被监控状态") // +
 	//utils.WrapperTitle("您有权保持沉默") + utils.WrapperTitle("您的所有操作都将被记录作为呈堂证供") +
 	//utils.WrapperTitle("知悉！")
 	defaultMenu := Menu{
@@ -50,7 +50,7 @@ func (mi *MenuItem) Text() string {
 		return mi.showText
 	}
 	cm := ColorMeta{GreenBoldColor: "\033[1;32m", ColorEnd: "\033[0m"}
-	line := fmt.Sprintf("\t%d) Enter {{.GreenBoldColor}}%s{{.ColorEnd}} to %s.%s", mi.id, mi.instruct, mi.helpText, "\r\n")
+	line := fmt.Sprintf("\t%d) 输入 {{.GreenBoldColor}}%s{{.ColorEnd}} %s.%s", mi.id, mi.instruct, mi.helpText, "\r\n")
 	tmpl := template.Must(template.New("item").Parse(line))
 
 	var buf bytes.Buffer
@@ -87,15 +87,14 @@ func displayBanner(sess io.ReadWriter, user string, banner Banner) {
 
 func (b *Banner) setMainMenu(idc string) {
 	mainMenu := Menu{
-		{showText: fmt.Sprintf("IDC: %s\n", idc)},
-		{id: 1, instruct: "ID", helpText: "directly login"},
-		{id: 2, instruct: "part IP, Hostname, Comment", helpText: "to search login if unique"},
-		{id: 3, instruct: "/ + IP, Hostname, Comment", helpText: "to search, such as: /192.168"},
-		{id: 4, instruct: "p", helpText: "display the host you have permission"},
-		{id: 5, instruct: "g", helpText: "display the node that you have permission"},
-		{id: 6, instruct: "r", helpText: "refresh your assets and nodes"},
-		{id: 7, instruct: "h", helpText: "print help"},
-		{id: 8, instruct: "q", helpText: "exit"},
+		{showText: fmt.Sprintf("当前IDC: %s\n", idc)},
+		{id: 1, instruct: "ID", helpText: "直接登陆"},
+		{id: 2, instruct: "part IP, Hostname, Comment", helpText: "搜索，如果资产唯一，则直接登陆"},
+		{id: 3, instruct: "/ + IP, Hostname, Comment", helpText: "搜索, 例: /192.168"},
+		{id: 4, instruct: "p", helpText: "展示您有权限的资源"},
+		{id: 6, instruct: "r", helpText: "返回上一级"},
+		{id: 7, instruct: "h", helpText: "帮助菜单"},
+		{id: 8, instruct: "q", helpText: "退出"},
 	}
 	b.Menu = mainMenu
 }
