@@ -15,21 +15,29 @@ import (
 const (
 	kbiQuestionPassword = "Password: "
 	kbiQuestionCode     = "Google Authentication Code: "
-	kbiInstruction      = `双因子认证登陆`
+	kbiInstruction      = `
+######################################################################################
+#### Using user password and google authenticator for Tow-Factor-Authentication ! ####
+######################################################################################
+`
 )
 
 var gacSecret = []byte{'&', 'b', 'A', '!', ';', 'O', '\'', 'd', 'z', '1'}
 
 func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res bool) {
+	// 生成用户登陆事件
+
+	// 登陆认证
 	username := ctx.User()
 	answers, err := challenge(username, kbiInstruction, []string{kbiQuestionPassword, kbiQuestionCode}, []bool{false, true})
 	if err != nil || len(answers) != 2 {
 		return
 	}
 	password := answers[0]
-	code := answers[1]
+	//code := answers[1]
 	// GAC + LDAP认证
-	res = authGAC(code) && authLDAP(username, password)
+	res = authLDAP(username, password)
+	//res = authGAC(code) && authLDAP(username, password)
 	if res {
 		common.Log.Infof("用户：%s 登陆成功", username)
 

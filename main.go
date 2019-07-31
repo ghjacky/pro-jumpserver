@@ -15,6 +15,7 @@ func main() {
 	defer common.Exit()
 	//jumpserver.GenGACqr()
 	// 运行jumpserver
+	jumpserver.InitJumpServer()
 	defer jumpserver.JPS.Stop()
 	jumpserver.JPS.Run()
 }
