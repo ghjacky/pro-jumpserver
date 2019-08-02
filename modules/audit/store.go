@@ -73,10 +73,19 @@ func NewStore(t string, args ...interface{}) (store IStore) {
 					return
 				}
 				store = FileStore{f}
+				return
 			default:
-				break
+				return
 			}
-			break
+		}
+	case StoreMysql:
+		for _, arg := range args {
+			switch v := arg.(type) {
+			case *gorm.DB:
+				store = MysqlStore{v}
+			default:
+				return
+			}
 		}
 	}
 	return

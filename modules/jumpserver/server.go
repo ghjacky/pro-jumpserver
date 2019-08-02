@@ -22,8 +22,6 @@ const (
 	ServerSignalStopping = -1
 )
 
-var JPSGlobalVContext *context.Context
-
 type JumpConfig struct {
 	Listen  string
 	User    string
@@ -47,7 +45,6 @@ func NewJumpServer(jc JumpConfig) (js *JumpServer) {
 	js = &JumpServer{}
 	js.JumpConfig = jc
 	js.Context = context.TODO()
-	JPSGlobalVContext = &js.Context
 	js.Status = ServerStatusStopped
 	js.Signal = make(chan int, 0)
 	js.Namespace = uuid.New()

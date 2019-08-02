@@ -9,6 +9,6 @@ func init() {
 }
 
 // register 注册子路由
-func register() {
-
+func Register() {
+	permissionRouter(R)
 }

@@ -1,10 +1,9 @@
 package models
 
-type models []IModel
-
 type IModel interface {
-	FetchList() models
+	FetchList(map[string]interface{}) []IModel
 	GetInfo(...interface{}) error
 	Update() error
 	Patch(...interface{}) error
+	Add() error
 }

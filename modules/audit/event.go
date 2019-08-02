@@ -25,91 +25,98 @@ const (
 type IEvent interface {
 	Search(...interface{}) []IEvent
 	SetStore(*IStore)
+	GetStore() *IStore
 	Marshal(IEvent) []byte
-	WriteToBuffer(IEvent, chan []byte) error
-	FlushBuffer(chan []byte, time.Duration)
+	WriteToBuffer(IEvent) error
+	FlushBuffer(chan interface{}, time.Duration)
+	GetBuffer() chan []byte
 }
 
 // 定义事件基本类型
 type Event struct {
-	SessionID    string  // JumpServer session id
-	SubSessionID string  // 登陆资产session id
-	Err          string  // 事件错误message，为空则为成功事件
-	Type         string  // 事件类型
-	User         string  // 触发事件的用户
-	Timestamp    int64   // 事件发生时间戳
-	ClientIP     string  // 登陆客户端地址
-	ServerIP     string  // 登陆服务端地址
-	Store        *IStore // 事件存储器接口
+	SessionID string  // JumpServer session id
+	Err       string  // 事件错误message，为空则为成功事件
+	Type      string  // 事件类型
+	User      string  // 触发事件的用户
+	Timestamp int64   // 事件发生时间戳
+	ClientIP  string  // 登陆客户端地址
+	ServerIP  string  // 登陆服务端地址
+	Store     *IStore // 事件存储器接口
+	Buffer    chan []byte
 }
 
+func (e *Event) GetBuffer() chan []byte {
+	return e.Buffer
+}
 func (*Event) Marshal(e IEvent) (data []byte) {
 	var err error
 	var me models.Event
 	switch v := e.(type) {
-	case *LoginEvent:
+	case *LoginToJpsEvent:
 		me = models.Event{
-			v.SessionID,
-			v.SubSessionID,
-			v.Type,
-			v.Err,
-			v.User,
-			v.Timestamp,
-			v.ClientIP,
-			v.ServerIP,
-			"",
-			"",
-			"",
-			"",
-			[]byte{},
+			SessionID: v.SessionID,
+			Type:      v.Type,
+			Err:       v.Err,
+			User:      v.User,
+			Timestamp: v.Timestamp,
+			ClientIP:  v.ClientIP,
+			ServerIP:  v.ServerIP,
 		}
+		// 登陆后首先更新用户活动状态
+		var u models.User
+		if err := common.Mysql.Find(&u, "username = ?", v.User).Error; err != nil {
+			common.Log.Warnf("Couldn't find user: %s in db, maybe new user", v.User)
+		}
+		u.IsActive = true
+		common.Mysql.Save(&u)
+		// 登陆事件相关部分信息写入mysql
+		common.Mysql.Create(&me)
+	case *LoginToServerEvent:
+		me = models.Event{
+			SessionID: v.SessionID,
+			Type:      v.Type,
+			Err:       v.Err,
+			User:      v.User,
+			Timestamp: v.Timestamp,
+			ClientIP:  v.ClientIP,
+			ServerIP:  v.ServerIP,
+		}
+		// 登陆事件相关部分信息写入mysql
+		common.Mysql.Create(&me)
 	case *ExecEvent:
 		me = models.Event{
-			v.SessionID,
-			v.SubSessionID,
-			v.Type,
-			v.Err,
-			v.User,
-			v.Timestamp,
-			v.ClientIP,
-			v.ServerIP,
-			"",
-			"",
-			v.Bin,
-			v.Command,
-			[]byte{},
+			SessionID: v.SessionID,
+			Type:      v.Type,
+			Err:       v.Err,
+			User:      v.User,
+			Timestamp: v.Timestamp,
+			ClientIP:  v.ClientIP,
+			ServerIP:  v.ServerIP,
+			Bin:       v.Bin,
+			Command:   v.Command,
 		}
 	case *FileEvent:
 		me = models.Event{
-			v.SessionID,
-			v.SubSessionID,
-			v.Type,
-			v.Err,
-			v.User,
-			v.Timestamp,
-			v.ClientIP,
-			v.ServerIP,
-			v.SrcFile,
-			v.DestFile,
-			"",
-			"",
-			[]byte{},
+			SessionID: v.SessionID,
+			Type:      v.Type,
+			Err:       v.Err,
+			User:      v.User,
+			Timestamp: v.Timestamp,
+			ClientIP:  v.ClientIP,
+			ServerIP:  v.ServerIP,
+			SrcFile:   v.SrcFile,
+			DestFile:  v.DestFile,
 		}
 	case *KBEvent:
 		me = models.Event{
-			v.SessionID,
-			v.SubSessionID,
-			v.Type,
-			v.Err,
-			v.User,
-			v.Timestamp,
-			v.ClientIP,
-			v.ServerIP,
-			"",
-			"",
-			"",
-			"",
-			v.Data,
+			SessionID: v.SessionID,
+			Type:      v.Type,
+			Err:       v.Err,
+			User:      v.User,
+			Timestamp: v.Timestamp,
+			ClientIP:  v.ClientIP,
+			ServerIP:  v.ServerIP,
+			Data:      v.Data,
 		}
 	}
 	data, err = json.Marshal(me)
@@ -124,29 +131,43 @@ func (e *Event) SetStore(store *IStore) {
 	return
 }
 
-func (e *Event) FlushBuffer(b chan []byte, interval time.Duration) {
+func (e *Event) GetStore() (store *IStore) {
+	store = e.Store
+	return
+}
+
+func (e *Event) FlushBuffer(done chan interface{}, interval time.Duration) {
+	defer func() {
+		if err := (*e.Store).Close(); err != nil {
+			common.Log.Errorln("Couldn't close events store")
+		}
+	}()
 	for {
-		time.Sleep(interval)
+		//time.Sleep(interval)
 		select {
-		case event := <-b:
-			if len(event) > 0 {
+		case event := <-e.Buffer:
+			if event != nil {
 				fmt.Println("got event, starting to flush event to store")
-				_, _ = (*e.Store).Write(event)
+				_, err := (*e.Store).Write(append(event, []byte("\n")...))
+				if err != nil {
+					return
+				}
+			} else {
+				return
 			}
-		default:
-			continue
+		case <-done:
+			return
 		}
 	}
 }
 
 // 将事件写入buffer，实现timeout
-func (*Event) WriteToBuffer(e IEvent, b chan []byte) (err error) {
-	fmt.Println("strting write to buffer")
+func (*Event) WriteToBuffer(e IEvent) (err error) {
 	wg := sync.WaitGroup{}
 	lock := sync.Mutex{}
 	isSuc := make(chan bool, 0)
 	go func() {
-		b <- e.Marshal(e)
+		e.GetBuffer() <- e.Marshal(e)
 		lock.Lock()
 		isSuc <- true
 		lock.Unlock()
@@ -167,18 +188,26 @@ func (*Event) WriteToBuffer(e IEvent, b chan []byte) (err error) {
 			}
 		}
 	}()
-	fmt.Printf("res of writing event to buffer: %s", err)
 	wg.Wait()
 	return
 }
 
 // 定义登陆事件类型
-type LoginEvent struct {
+type LoginToJpsEvent struct {
+	Event
+}
+type LoginToServerEvent struct {
 	Event
 }
 
 // 根据用户名、时间段、Server地址查询登陆事件
-func (le *LoginEvent) Search(args ...interface{}) (es []IEvent) {
+func (le *LoginToServerEvent) Search(args ...interface{}) (es []IEvent) {
+
+	return
+}
+
+// 根据用户名、时间段、Server地址查询登陆事件
+func (le *LoginToJpsEvent) Search(args ...interface{}) (es []IEvent) {
 
 	return
 }
@@ -214,14 +243,5 @@ type KBEvent struct {
 }
 
 func (ke *KBEvent) Search(args ...interface{}) (es []IEvent) {
-	return
-}
-
-// 生成事件
-func NewEvent(t string) (e IEvent) {
-	switch t {
-	case EventTypeUserLoginToJPS:
-		e = &LoginEvent{Event{Type: EventTypeUserLoginToJPS}}
-	}
 	return
 }
