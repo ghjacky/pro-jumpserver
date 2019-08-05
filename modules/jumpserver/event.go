@@ -108,7 +108,7 @@ func (h *interactiveHandler) generateServerLoginEvent() {
 	loginServerEvent := h.newEvent(audit.EventTypeUserLoginToServer).(*audit.LoginToServerEvent)
 	loginServerEvent.Timestamp = time.Now().UnixNano()
 	loginServerEvent.ClientIP = h.userIP
-	loginServerEvent.ServerIP = h.jpsIP
+	loginServerEvent.ServerIP = h.serverIP
 	loginServerEvent.SetStore(&fsNormal)
 	loginServerEvent.Buffer = make(chan []byte, 1)
 	go loginServerEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)

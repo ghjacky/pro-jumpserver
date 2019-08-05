@@ -1,6 +1,8 @@
 package audit
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"github.com/go-redis/redis"
 	"github.com/jinzhu/gorm"
 	"io"
@@ -12,6 +14,7 @@ const (
 	StoreRedis = "redisStore"
 	StoreMysql = "mysqlStore"
 	StoreFile  = "fileStore"
+	StoreTargz = "targzStore"
 )
 
 // 事件存储器接口
@@ -61,6 +64,11 @@ func (fs FileStore) Close() (err error) {
 	return
 }
 
+// gzip存储器
+type TargzStore struct {
+	tar.Writer
+}
+
 // 创建存储器
 func NewStore(t string, args ...interface{}) (store IStore) {
 	switch t {
@@ -83,6 +91,21 @@ func NewStore(t string, args ...interface{}) (store IStore) {
 			switch v := arg.(type) {
 			case *gorm.DB:
 				store = MysqlStore{v}
+			default:
+				return
+			}
+		}
+	case StoreTargz:
+		for _, arg := range args {
+			switch path := arg.(type) {
+			case string:
+				f, err := os.Create(path)
+				if err != nil {
+					return
+				}
+				gw := gzip.NewWriter(f)
+				tw := tar.NewWriter(gw)
+				store = tw
 			default:
 				return
 			}

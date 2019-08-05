@@ -1,6 +1,9 @@
 package assets
 
-import "golang.org/x/crypto/ssh"
+import (
+	"fmt"
+	"golang.org/x/crypto/ssh"
+)
 
 type ACommon struct {
 	IP   string `json:"ip"`
@@ -12,13 +15,16 @@ type IAsset interface {
 	NewSession() interface{}
 }
 
-func NewAssetClient(as IAsset) IAsset {
+func NewAssetClient(as IAsset) (IAsset, error) {
+	var err error
 	switch v := as.(type) {
 	case *ASSH:
 		c := v.Connect()
 		if c != nil {
 			v.Client = c.(*ssh.Client)
+		} else {
+			err = fmt.Errorf("couldn't connect to remote server: %s:%d\n", v.IP, v.PORT)
 		}
 	}
-	return as
+	return as, err
 }

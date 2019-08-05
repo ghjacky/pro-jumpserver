@@ -61,7 +61,7 @@ func sessionHandler(session ssh.Session) {
 		go handler.fetchPermissionAssets()
 		// 初始化handler
 		handler.Initial(session)
-		// 用户退出堡垒机后关闭相应缓冲区
+		// session退出前关闭相应缓冲区
 		defer func() {
 			// 关闭eventWriter
 			if err := handler.kbEventWriter.Close(); err != nil {
@@ -281,7 +281,12 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 			as.PORT = a.Port
 			as.USER = h.user
 			as.PASS = "gmy123#@!"
-			as = assets.NewAssetClient(as).(*assets.ASSH)
+			ias, err := assets.NewAssetClient(as)
+			if err != nil {
+				_, _ = h.term.c.Write([]byte(err.Error()))
+				return
+			}
+			as = ias.(*assets.ASSH)
 			// 建立一个到远端主机到ssh session
 			subSession := as.NewSession().(*ssh2.Session)
 			if subSession != nil {

@@ -62,7 +62,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
 		}
-		// 登陆后首先更新用户活动状态
+		// 登陆后首先更新用户活动状态(db)
 		var u models.User
 		if err := common.Mysql.Find(&u, "username = ?", v.User).Error; err != nil {
 			common.Log.Warnf("Couldn't find user: %s in db, maybe new user", v.User)
@@ -81,7 +81,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
 		}
-		// 登陆事件相关部分信息写入mysql
+		// 登陆事件相关部分信息入库（db）
 		common.Mysql.Create(&me)
 	case *ExecEvent:
 		me = models.Event{
