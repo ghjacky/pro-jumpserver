@@ -24,7 +24,7 @@ func initMysql() {
 		Config.mysqlConfig.user, Config.mysqlConfig.password, Config.mysqlConfig.host, Config.mysqlConfig.port,
 		Config.mysqlConfig.database, strings.Join(Config.mysqlConfig.connParams, "&")))
 	if err != nil {
-		Log.Fatalf("Couldn't to mysql at %s:%d", Config.mysqlConfig.host, Config.mysqlConfig.port)
+		Log.Fatalf("Couldn't connect to mysql at %s:%d", Config.mysqlConfig.host, Config.mysqlConfig.port)
 	} else {
 		Log.Infof("Connected to mysql at %s:%d successfully", Config.mysqlConfig.host, Config.mysqlConfig.port)
 		Log.Infoln("Config mysql to LogMode")

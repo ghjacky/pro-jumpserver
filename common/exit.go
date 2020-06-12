@@ -13,4 +13,6 @@ func Exit() {
 	if err := Redis.Close(); err != nil {
 		Log.Errorf("Couldn't closing redis connection to %s:%d", Config.redisConfig.host, Config.redisConfig.port)
 	}
+	// 关闭ldap连接
+	LdapConn.Close()
 }

@@ -34,13 +34,15 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 		return
 	}
 	password := answers[0]
-	//code := answers[1]
+	code := answers[1]
 	// GAC + LDAP认证
-	res = authLDAP(username, password)
-	//res = authGAC(code) && authLDAP(username, password)
+	//res = authLDAP(username, password)
+	res = authGAC(code) && authLDAP(username, password)
 	if res {
+		// 登陆成功，将用户信息写入context
+		ctx.SetValue("loginUser", username)
+		ctx.SetValue("loginPass", password)
 		common.Log.Infof("用户：%s 登陆成功", username)
-
 	} else {
 		common.Log.Errorf("用户：%s 登陆失败", username)
 	}
@@ -51,9 +53,16 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 // 密码认证
 func checkUserPassword(ctx ssh.Context, password string) (res bool) {
 	if len(password) != 0 {
-		user := ctx.User()
+		username := ctx.User()
 		// 走ldap认证
-		res = authLDAP(user, password)
+		res = authLDAP(username, password)
+		if res {
+			ctx.SetValue("loginUser", username)
+			ctx.SetValue("loginPass", password)
+			common.Log.Infof("用户：%s 登陆成功", username)
+		} else {
+			common.Log.Errorf("用户：%s 登陆失败", username)
+		}
 	}
 	common.Log.Debugln("checkUserPassword")
 	return res
@@ -68,7 +77,11 @@ func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
 
 // ldap 认证
 func authLDAP(user, pass string) (res bool) {
-
+	if err := common.LdapConn.Bind(user, pass); err != nil {
+		common.Log.Errorf("Auth failure for user: %s", user)
+	} else {
+		common.Log.Infof("Auth success!")
+	}
 	return true
 }
 

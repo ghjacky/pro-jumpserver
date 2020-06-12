@@ -107,6 +107,6 @@ func (js *JumpServer) Run() {
 func (js *JumpServer) Stop() {
 	// graceful stop server, waiting for closing existed connections
 	if err := js.Server.Shutdown(context.TODO()); err != nil {
-		common.Log.Errorf("Failed to shutdown jumpserver")
+		common.Log.Errorf("Failed to shutdown jump server")
 	}
 }

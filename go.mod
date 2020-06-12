@@ -4,13 +4,14 @@ go 1.12
 
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 // indirect
+	github.com/banzaicloud/logrus-runtime-formatter v0.0.0-20190729070250-5ae5475bae5e
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
-	github.com/gin-gonic/gin v1.4.0 // indirect
+	github.com/gin-gonic/gin v1.4.0
 	github.com/gliderlabs/ssh v0.2.2
+	github.com/go-ldap/ldap/v3 v3.1.11
 	github.com/go-redis/redis v6.15.3+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.1
-	github.com/hashicorp/hcl v1.0.0
 	github.com/jinzhu/gorm v1.9.10
 	github.com/leonelquinteros/gotext v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.4.2

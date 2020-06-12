@@ -280,7 +280,8 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 			as.IP = a.IP
 			as.PORT = a.Port
 			as.USER = h.user
-			as.PASS = "gmy123#@!"
+			// 从session context中获取用户的登陆凭证用于远程主机登陆
+			as.PASS = h.sess.Sess.Context().Value("loginPass").(string)
 			ias, err := assets.NewAssetClient(as)
 			if err != nil {
 				_, _ = h.term.c.Write([]byte(err.Error()))

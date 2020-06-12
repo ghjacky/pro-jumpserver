@@ -38,6 +38,7 @@ type config struct {
 	mainConfig
 	mysqlConfig
 	redisConfig
+	ldapConfig
 }
 
 var Config = &config{}
@@ -68,6 +69,12 @@ func (c *config) initConfig() {
 		c.redisConfig.port = viper.GetInt("redis.port")
 		c.redisConfig.password = viper.GetString("redis.password")
 		c.redisConfig.db = viper.GetInt("redis.db")
+		c.ldapConfig.server = viper.GetString("ldap.server")
+		c.ldapConfig.port = viper.GetInt("ldap.port")
+		c.ldapConfig.dn = viper.GetString("ldap.dn")
+		c.ldapConfig.searchScope = viper.GetString("ldap.search_scope")
+		c.ldapConfig.bindUser = viper.GetString("ldap.bind_user")
+		c.ldapConfig.password = viper.GetString("ldap.password")
 	}
 	if len(logfile) == 0 {
 		logfile = DefaultLogFile

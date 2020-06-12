@@ -10,6 +10,7 @@ import (
 	"zeus/modules/audit"
 )
 
+// 生成指定类型事件
 func (h *interactiveHandler) newEvent(t string) (e audit.IEvent) {
 	ce := audit.Event{User: h.user, SessionID: h.sessionID}
 	switch t {
@@ -32,6 +33,7 @@ func (h *interactiveHandler) newEvent(t string) (e audit.IEvent) {
 	return
 }
 
+// 监听键盘按键事件
 func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, watcherDone chan bool) {
 
 	var flushDone = make(chan interface{}, 0)
@@ -49,7 +51,7 @@ func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, wat
 	kbEvent.Buffer = make(chan []byte, 10240)
 	// goroutine 后台定时从flush buffer到store
 	go kbEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
-
+	//
 	go func(se chan bool) {
 		defer func() {
 			flushDone <- 1
@@ -73,6 +75,7 @@ func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, wat
 	go h.kbEventWriter.Watch(kbEvent, watcherDone)
 }
 
+// 生成jump server登陆事件
 func (h *interactiveHandler) generateJPSLoginEvent() {
 	var flushDone = make(chan interface{}, 0)
 	defer func() {
@@ -96,6 +99,7 @@ func (h *interactiveHandler) generateJPSLoginEvent() {
 	return
 }
 
+// 生成远程主机登陆事件
 func (h *interactiveHandler) generateServerLoginEvent() {
 	var flushDone = make(chan interface{}, 0)
 	defer func() {

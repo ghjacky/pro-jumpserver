@@ -147,7 +147,6 @@ func (e *Event) FlushBuffer(done chan interface{}, interval time.Duration) {
 		select {
 		case event := <-e.Buffer:
 			if event != nil {
-				fmt.Println("got event, starting to flush event to store")
 				_, err := (*e.Store).Write(append(event, []byte("\n")...))
 				if err != nil {
 					return
