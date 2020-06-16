@@ -43,10 +43,10 @@ func (a *ASSH) NewSession() (s interface{}) {
 	return
 }
 
-func FetchPermedAssets(user models.User, idc string) (ss []models.Server) {
+func FetchPermedAssets(user models.User, idc string) (ss []*models.Server) {
 	assets := user.FetchPermissionAssets(idc)
 	for _, a := range assets {
-		ss = append(ss, a.(*models.Asset).Server)
+		ss = append(ss, a.(*models.Asset).Servers...)
 	}
 	return
 }

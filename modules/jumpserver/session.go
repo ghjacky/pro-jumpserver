@@ -33,8 +33,8 @@ type interactiveHandler struct {
 	mu           *sync.RWMutex
 	//nodeDataLoaded  chan struct{}
 	//assetDataLoaded chan struct{}
-	assets         []models.Server
-	searchedAssets []models.Server
+	assets         []*models.Server
+	searchedAssets []*models.Server
 	Banner
 	selectedIDC   string
 	sessionID     string
@@ -264,7 +264,7 @@ func (h *interactiveHandler) displayAllAssets() {
 }
 
 func (h *interactiveHandler) searchAssets(pattern string) {
-	h.searchedAssets = []models.Server{}
+	h.searchedAssets = []*models.Server{}
 	for _, a := range h.assets {
 		if strings.Contains(a.Hostname, pattern) || strings.Contains(a.IP, pattern) || strings.Contains(fmt.Sprintf("%d", a.ID), pattern) {
 			h.searchedAssets = append(h.searchedAssets, a)
