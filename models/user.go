@@ -1,7 +1,6 @@
 package models
 
 import (
-	"time"
 	"zeus/common"
 )
 
@@ -34,23 +33,4 @@ func (u *User) Patch(...interface{}) (err error) {
 }
 func (u *User) Add() (err error) {
 	return common.Mysql.Debug().Create(u).Error
-}
-
-func (u *User) FetchPermissionAssets(idc string) (ms []IModel) {
-	// 根据tag从服务树拉取主机列表，并整理生成assets列表，返回
-	//
-	s := Server{}
-	s.ID = 1
-	s.IP = "172.16.244.28"
-	s.Hostname = "dev_server"
-	s.IDC = "天津"
-	s.Type = "ssh"
-	s.Port = 22
-	a := Asset{}
-	a.ID = 1
-	a.Type = "ssh"
-	a.Servers = Servers{&s}
-	a.Tag = ""
-	a.Expire = time.Now().UnixNano() + int64(3*time.Hour)
-	return append(ms, &a)
 }

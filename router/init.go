@@ -4,8 +4,9 @@ import "github.com/gin-gonic/gin"
 
 var R *gin.Engine
 
-func init() {
+func Init() {
 	R = gin.Default()
+	Register()
 }
 
 // register 注册子路由

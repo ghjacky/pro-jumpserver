@@ -15,6 +15,7 @@ import (
 	"zeus/models"
 	"zeus/modules/assets"
 	"zeus/modules/audit"
+	"zeus/modules/users"
 )
 
 const (
@@ -33,8 +34,8 @@ type interactiveHandler struct {
 	mu           *sync.RWMutex
 	//nodeDataLoaded  chan struct{}
 	//assetDataLoaded chan struct{}
-	assets         []*models.Server
-	searchedAssets []*models.Server
+	servers         models.Servers
+	searchedServers models.Servers
 	Banner
 	selectedIDC   string
 	sessionID     string
@@ -254,31 +255,31 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 
 func (h *interactiveHandler) fetchPermissionAssets() {
 	user := models.User{Username: h.user}
-	h.assets = assets.FetchPermedAssets(user, h.selectedIDC)
+	h.servers = users.FilterPermissionServersByIDC(&user, h.selectedIDC)
 }
 
 func (h *interactiveHandler) displayAllAssets() {
-	for _, a := range h.assets {
-		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", a.ID, a.Hostname, a.IP, a.IDC)))
+	for i, s := range h.servers {
+		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", i+1, s.Hostname, s.IP, s.IDC)))
 	}
 }
 
 func (h *interactiveHandler) searchAssets(pattern string) {
-	h.searchedAssets = []*models.Server{}
-	for _, a := range h.assets {
-		if strings.Contains(a.Hostname, pattern) || strings.Contains(a.IP, pattern) || strings.Contains(fmt.Sprintf("%d", a.ID), pattern) {
-			h.searchedAssets = append(h.searchedAssets, a)
+	h.searchedServers = []*models.Server{}
+	for i, a := range h.servers {
+		if strings.Contains(a.Hostname, pattern) || strings.Contains(a.IP, pattern) || strings.Contains(fmt.Sprintf("%d", i+1), pattern) {
+			h.searchedServers = append(h.searchedServers, a)
 		}
 	}
 	// 如果只匹配到一个主机，则直接登陆，两个及以上主机则返回列表展示
-	if len(h.searchedAssets) == 1 {
-		a := h.searchedAssets[0]
-		h.serverIP = a.IP
-		switch a.Type {
-		case models.AssetTypeSSH:
+	if len(h.searchedServers) == 1 {
+		s := h.searchedServers[0]
+		h.serverIP = s.IP
+		switch s.Type {
+		case models.ServerTypeSSH:
 			as := &assets.ASSH{}
-			as.IP = a.IP
-			as.PORT = a.Port
+			as.IP = s.IP
+			as.PORT = s.Port
 			as.USER = h.user
 			// 从session context中获取用户的登陆凭证用于远程主机登陆
 			as.PASS = h.sess.Sess.Context().Value("loginPass").(string)
@@ -300,13 +301,13 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 			}
 		}
 	} else {
-		h.displaySearchedAssets()
+		h.displaySearchedServers()
 	}
 }
 
-func (h *interactiveHandler) displaySearchedAssets() {
-	for _, a := range h.searchedAssets {
-		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", a.ID, a.Hostname, a.IP, a.IDC)))
+func (h *interactiveHandler) displaySearchedServers() {
+	for i, a := range h.searchedServers {
+		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", i+1, a.Hostname, a.IP, a.IDC)))
 	}
 }
 

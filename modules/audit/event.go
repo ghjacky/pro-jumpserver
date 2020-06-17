@@ -3,6 +3,7 @@ package audit
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"sync"
 	"time"
 	"zeus/common"
@@ -54,6 +55,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 	switch v := e.(type) {
 	case *LoginToJpsEvent:
 		me = models.Event{
+			ID:        uuid.New(),
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
@@ -73,6 +75,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 		common.Mysql.Create(&me)
 	case *LoginToServerEvent:
 		me = models.Event{
+			ID:        uuid.New(),
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
