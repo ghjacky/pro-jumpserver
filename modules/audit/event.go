@@ -124,7 +124,8 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			Data:      v.Data,
 		}
 	}
-	data, err = json.Marshal(me)
+	// 仅序列化必要的字段，以最大限度的减小事件占用的存储大小
+	data, err = json.Marshal(map[string]interface{}{"timestamp": me.Timestamp, "data": me.Data})
 	if err != nil {
 		common.Log.Errorf("Couldn't marshal event to byte array")
 	}
