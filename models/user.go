@@ -20,7 +20,7 @@ func (u *User) FetchList(args map[string]interface{}) (ms []IModel) {
 	return append(ms, &User{Username: "myguo", IsValid: true, IsActive: false})
 }
 func (u *User) GetInfo(...interface{}) (err error) {
-	return common.Mysql.Model(u).Preload("Assets", "username = ?", u.Username).Find(u).Error
+	return common.Mysql.Preload("Assets").Find(u).Error
 }
 func (u *User) Update() (err error) {
 	return common.Mysql.Debug().Save(u).Error

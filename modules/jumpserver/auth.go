@@ -34,10 +34,10 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 		return
 	}
 	password := answers[0]
-	code := answers[1]
+	//code := answers[1]
 	// GAC + LDAP认证
-	//res = authLDAP(username, password)
-	res = authGAC(code) && authLDAP(username, password)
+	res = authLDAP(username, password)
+	//res = authGAC(code) && authLDAP(username, password)
 	if res {
 		// 登陆成功，将用户信息写入context
 		ctx.SetValue("loginUser", username)

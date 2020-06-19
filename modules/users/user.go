@@ -4,6 +4,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"sync"
 	"zeus/common"
+	"zeus/external"
 	"zeus/models"
 )
 
@@ -42,6 +43,7 @@ func FetchPermissionAssets(user *models.User) error {
 				// TODO
 				// 如果是"tag"，则需要从服务树拉取相应server资源进行填充
 				//
+				ast.Servers = external.FetchServersByTag(ast.Tag)
 			}(ast)
 		}
 	}
@@ -53,15 +55,17 @@ func FilterPermissionServersByIDC(user *models.User, idc string) (ss models.Serv
 	// 首先根据user获取对应权限资源
 	if err := FetchPermissionAssets(user); err != nil {
 		common.Log.Errorf("获取用户：%s的权限资源失败：%s", user.Username, err.Error())
-		return nil
+		//return nil
 	}
+	////// 测试数据
 	s := models.Server{}
 	s.IP = "172.16.244.28"
 	s.Hostname = "dev_server"
 	s.IDC = "天津"
 	s.Type = "ssh"
 	s.Port = 22
-	ss = models.Servers{}
+	ss = models.Servers{&s}
+	//////
 	// 根据IDC名称过滤权限资源
 	wg := sync.WaitGroup{}
 	lock := sync.Mutex{}

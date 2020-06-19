@@ -1,11 +1,15 @@
 package router
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"zeus/middleware"
+)
 
 var R *gin.Engine
 
 func Init() {
 	R = gin.Default()
+	R.Use(middleware.CheckToken())
 	Register()
 }
 

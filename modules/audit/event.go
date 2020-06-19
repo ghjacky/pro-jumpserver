@@ -35,6 +35,7 @@ type IEvent interface {
 
 // 定义事件基本类型
 type Event struct {
+	ID        uuid.UUID
 	SessionID string  // JumpServer session id
 	Err       string  // 事件错误message，为空则为成功事件
 	Type      string  // 事件类型
@@ -55,7 +56,6 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 	switch v := e.(type) {
 	case *LoginToJpsEvent:
 		me = models.Event{
-			ID:        uuid.New(),
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
@@ -64,10 +64,12 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
 		}
+		me.ID = v.ID
 		// 登陆后首先更新用户活动状态(db)
 		var u models.User
 		if err := common.Mysql.Find(&u, "username = ?", v.User).Error; err != nil {
 			common.Log.Warnf("Couldn't find user: %s in db, maybe new user", v.User)
+			u.Username = v.User
 		}
 		u.IsActive = true
 		common.Mysql.Save(&u)
@@ -75,7 +77,6 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 		common.Mysql.Create(&me)
 	case *LoginToServerEvent:
 		me = models.Event{
-			ID:        uuid.New(),
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
@@ -84,6 +85,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
 		}
+		me.ID = v.ID
 		// 登陆事件相关部分信息入库（db）
 		common.Mysql.Create(&me)
 	case *ExecEvent:

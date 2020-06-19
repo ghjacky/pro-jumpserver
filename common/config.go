@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/spf13/viper"
 	"os"
+	"strings"
 )
 
 // 定义部分默认配置
@@ -33,12 +34,14 @@ type mainConfig struct {
 	DataDir        string
 	PlayDir        string
 	LogFile        *os.File
+	IDCs           []string
 }
 type config struct {
 	mainConfig
 	mysqlConfig
 	redisConfig
 	ldapConfig
+	HeraConfig
 }
 
 var Config = &config{}
@@ -60,6 +63,7 @@ func (c *config) initConfig() {
 		c.DataDir = viper.GetString("main.dataDir")
 		c.PlayDir = viper.GetString("main.playDir")
 		logfile = viper.GetString("main.logfile")
+		c.IDCs = strings.Split(viper.GetString("main.idcs"), ",")
 		c.mysqlConfig.user = viper.GetString("mysql.user")
 		c.mysqlConfig.host = viper.GetString("mysql.host")
 		c.mysqlConfig.port = viper.GetInt("mysql.port")
@@ -75,6 +79,9 @@ func (c *config) initConfig() {
 		c.ldapConfig.searchScope = viper.GetString("ldap.search_scope")
 		c.ldapConfig.bindUser = viper.GetString("ldap.bind_user")
 		c.ldapConfig.password = viper.GetString("ldap.password")
+		c.HeraConfig.Name = viper.GetString("hera.name")
+		c.HeraConfig.Addr = strings.Trim(viper.GetString("hera.addr"), "/")
+		c.HeraConfig.ApiPrefix = strings.Trim(viper.GetString("hera.api_prefix"), "/")
 	}
 	if len(logfile) == 0 {
 		logfile = DefaultLogFile

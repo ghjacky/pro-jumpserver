@@ -1,6 +1,7 @@
 package jumpserver
 
 import (
+	"github.com/google/uuid"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"path"
@@ -34,11 +35,11 @@ func (h *interactiveHandler) newEvent(t string) (e audit.IEvent) {
 }
 
 // 监听键盘按键事件
-func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, watcherDone chan bool) {
+func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, watcherDone chan bool, loginServerEventId uuid.UUID) {
 
 	var flushDone = make(chan interface{}, 0)
 	// 文件事件存储器
-	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join([]string{SessionKBEventsStoreKeyPrefix, audit.EventTypeKeyBoardPress, h.serverIP, h.sessionID}, "_")))
+	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join([]string{SessionKBEventsStoreKeyPrefix, audit.EventTypeKeyBoardPress, h.serverIP, h.sessionID, loginServerEventId.String()}, "_")))
 
 	// 监控h.term输入输出及错误 生成相应事件并存储
 	sout, _ := session.StdoutPipe()
@@ -91,6 +92,7 @@ func (h *interactiveHandler) generateJPSLoginEvent() {
 	loginEvent.ServerIP = h.jpsIP
 	loginEvent.SetStore(&fsNormal)
 	loginEvent.Buffer = make(chan []byte, 1)
+	loginEvent.ID = uuid.New()
 	go loginEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
 	// 更新登陆事件信息
 	if err := loginEvent.WriteToBuffer(loginEvent); err != nil {
@@ -100,19 +102,21 @@ func (h *interactiveHandler) generateJPSLoginEvent() {
 }
 
 // 生成远程主机登陆事件
-func (h *interactiveHandler) generateServerLoginEvent() {
+func (h *interactiveHandler) generateServerLoginEvent() (loginServerEventID uuid.UUID) {
 	var flushDone = make(chan interface{}, 0)
 	defer func() {
 		flushDone <- 1
 	}()
-	// 创建文件事件存储器（单字符事件和其他分开存储，单字符事件用于后续回放）
-	fsNormal := audit.NewStore(audit.StoreFile, path.Join(SessionNormalEventRecordDir, strings.Join([]string{SessionNormalEventsStoreKeyPrefix, audit.EventTypeUserLoginToServer, h.serverIP, h.sessionID}, "_")))
-
 	// 用户登陆资产成功, 获取相关信息，生成登陆事件并存储，此时，用户已进入被监控状态
 	loginServerEvent := h.newEvent(audit.EventTypeUserLoginToServer).(*audit.LoginToServerEvent)
 	loginServerEvent.Timestamp = time.Now().UnixNano()
 	loginServerEvent.ClientIP = h.userIP
 	loginServerEvent.ServerIP = h.serverIP
+	loginServerEvent.ID = uuid.New()
+
+	// 创建文件事件存储器（单字符事件和其他分开存储，单字符事件用于后续回放）
+	fsNormal := audit.NewStore(audit.StoreFile, path.Join(SessionNormalEventRecordDir, strings.Join([]string{SessionNormalEventsStoreKeyPrefix, audit.EventTypeUserLoginToServer, h.serverIP, h.sessionID, loginServerEvent.ID.String()}, "_")))
+
 	loginServerEvent.SetStore(&fsNormal)
 	loginServerEvent.Buffer = make(chan []byte, 1)
 	go loginServerEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
@@ -120,5 +124,5 @@ func (h *interactiveHandler) generateServerLoginEvent() {
 	if err := loginServerEvent.WriteToBuffer(loginServerEvent); err != nil {
 		common.Log.Errorf("Failed to write event to buffer")
 	}
-	return
+	return loginServerEvent.ID
 }

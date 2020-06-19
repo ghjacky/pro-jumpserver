@@ -184,9 +184,9 @@ func (h *interactiveHandler) selectIDC(sessionExitSignal chan bool) {
 			return
 		default:
 			idcID, err := strconv.Atoi(line)
-			if err == nil && idcID >= 0 && idcID < len(IDCS) {
-				h.selectedIDC = IDCS[idcID]
-				h.Banner.setMainMenu(IDCS[idcID])
+			if err == nil && idcID >= 0 && idcID < len(IDCs) {
+				h.selectedIDC = IDCs[idcID]
+				h.Banner.setMainMenu(IDCs[idcID])
 				h.displayBanner()
 				h.Dispatch(sessionExitSignal)
 				return
@@ -321,9 +321,8 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 		ssh2.TTY_OP_OSPEED: 14400,
 	}
 	// 生成资产登陆事件并存储
-	h.generateServerLoginEvent()
 	// 开始监控keyboard single character事件, 并存储，用户后续播放
-	h.WatchKBEvent(session, sessionExitChan, watcherExitChan)
+	h.WatchKBEvent(session, sessionExitChan, watcherExitChan, h.generateServerLoginEvent())
 	//session.Stdout = h.term.c
 	session.Stdin = h.term.c
 	session.Stderr = h.term.c

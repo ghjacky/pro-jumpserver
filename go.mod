@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 // indirect
 	github.com/banzaicloud/logrus-runtime-formatter v0.0.0-20190729070250-5ae5475bae5e
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/gin-gonic/gin v1.4.0
 	github.com/gliderlabs/ssh v0.2.2

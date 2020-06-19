@@ -9,16 +9,6 @@ import (
 	"zeus/utils"
 )
 
-const (
-	IDCTJ  = "天津"
-	IDCBJ  = "北京"
-	IDCHK  = "香港"
-	IDCAM  = "美国"
-	IDCALL = "全部"
-)
-
-var IDCS = []string{IDCBJ, IDCHK, IDCTJ, IDCAM, IDCALL}
-
 type MenuItem struct {
 	id       int
 	instruct string
@@ -31,6 +21,19 @@ type Banner struct {
 	Title string
 }
 
+var IDCs []string
+
+func init() {
+	go func() {
+		for {
+			if len(common.Config.IDCs) != 0 {
+				IDCs = append(common.Config.IDCs, "全部")
+				break
+			}
+		}
+	}()
+}
+
 func newDefaultBanner() Banner {
 	defaultTitle := utils.WrapperTitle("欢迎使用跳板机, 您已进入被监控状态") // +
 	//utils.WrapperTitle("您有权保持沉默") + utils.WrapperTitle("您的所有操作都将被记录作为呈堂证供") +
@@ -38,7 +41,7 @@ func newDefaultBanner() Banner {
 	defaultMenu := Menu{
 		{showText: "请输入序号切换相应IDC:\n"},
 	}
-	for index, idc := range IDCS {
+	for index, idc := range IDCs {
 		defaultMenu = append(defaultMenu, MenuItem{showText: fmt.Sprintf("	%d) %s\n", index, idc)})
 	}
 	defaultMenu = append(defaultMenu, MenuItem{showText: "输入q退出！\n\n"})
