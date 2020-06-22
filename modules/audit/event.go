@@ -71,7 +71,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			common.Log.Warnf("Couldn't find user: %s in db, maybe new user", v.User)
 			u.Username = v.User
 		}
-		u.IsActive = true
+		u.Active = models.UserActiveYes
 		common.Mysql.Save(&u)
 		// 登陆事件相关部分信息写入mysql
 		common.Mysql.Create(&me)

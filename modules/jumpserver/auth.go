@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"rsc.io/qr"
 	"zeus/common"
+	"zeus/modules/users"
 )
 
 const (
@@ -34,6 +35,10 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 		return
 	}
 	password := answers[0]
+	// 首先检测账户是否可用
+	if !users.IsValid(username) {
+		return false
+	}
 	//code := answers[1]
 	// GAC + LDAP认证
 	res = authLDAP(username, password)
