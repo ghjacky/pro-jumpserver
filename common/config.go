@@ -40,7 +40,7 @@ type config struct {
 	mainConfig
 	mysqlConfig
 	redisConfig
-	ldapConfig
+	LdapConfig
 	HeraConfig
 }
 
@@ -73,12 +73,12 @@ func (c *config) initConfig() {
 		c.redisConfig.port = viper.GetInt("redis.port")
 		c.redisConfig.password = viper.GetString("redis.password")
 		c.redisConfig.db = viper.GetInt("redis.db")
-		c.ldapConfig.server = viper.GetString("ldap.server")
-		c.ldapConfig.port = viper.GetInt("ldap.port")
-		c.ldapConfig.dn = viper.GetString("ldap.dn")
-		c.ldapConfig.searchScope = viper.GetString("ldap.search_scope")
-		c.ldapConfig.bindUser = viper.GetString("ldap.bind_user")
-		c.ldapConfig.password = viper.GetString("ldap.password")
+		c.LdapConfig.Server = viper.GetString("ldap.server")
+		c.LdapConfig.Port = viper.GetInt("ldap.port")
+		c.LdapConfig.Dn = viper.GetString("ldap.dn")
+		c.LdapConfig.SearchScope = viper.GetString("ldap.search_scope")
+		c.LdapConfig.BindUser = viper.GetString("ldap.bind_user")
+		c.LdapConfig.Password = viper.GetString("ldap.password")
 		c.HeraConfig.Name = viper.GetString("hera.name")
 		c.HeraConfig.Addr = strings.Trim(viper.GetString("hera.addr"), "/")
 		c.HeraConfig.ApiPrefix = strings.Trim(viper.GetString("hera.api_prefix"), "/")

@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"rsc.io/qr"
 	"zeus/common"
+	"zeus/models"
 	"zeus/modules/users"
 )
 
@@ -18,7 +19,7 @@ const (
 	kbiQuestionCode     = "Google Authentication Code: "
 	kbiInstruction      = `
 ######################################################################################
-#### Using user password and google authenticator for Tow-Factor-Authentication ! ####
+#### Using user password and google authenticator for Two-Factor-Authentication ! ####
 ######################################################################################
 `
 )
@@ -36,12 +37,13 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 	}
 	password := answers[0]
 	// 首先检测账户是否可用
-	if !users.IsValid(username) {
+	user := models.User{Username: username}
+	if !users.IsValid(&user) {
 		return false
 	}
 	//code := answers[1]
 	// GAC + LDAP认证
-	res = authLDAP(username, password)
+	res = authLDAP(user, password)
 	//res = authGAC(code) && authLDAP(username, password)
 	if res {
 		// 登陆成功，将用户信息写入context
@@ -60,7 +62,7 @@ func checkUserPassword(ctx ssh.Context, password string) (res bool) {
 	if len(password) != 0 {
 		username := ctx.User()
 		// 走ldap认证
-		res = authLDAP(username, password)
+		res = authLDAP(models.User{Username: username}, password)
 		if res {
 			ctx.SetValue("loginUser", username)
 			ctx.SetValue("loginPass", password)
@@ -77,17 +79,22 @@ func checkUserPassword(ctx ssh.Context, password string) (res bool) {
 // 公钥认证
 func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
 
-	return res
+	return false
 }
 
 // ldap 认证
-func authLDAP(user, pass string) (res bool) {
-	if err := common.LdapConn.Bind(user, pass); err != nil {
-		common.Log.Errorf("Auth failure for user: %s", user)
+
+func authLDAP(user models.User, pass string) (res bool) {
+	defer func() {
+		_ = common.LdapConn.Bind(common.Config.LdapConfig.BindUser, common.Config.LdapConfig.Password)
+	}()
+	if err := common.LdapConn.Bind(fmt.Sprintf("%s@aibee", user.Username), pass); err != nil {
+		common.Log.Errorf("Authentication failure for user: %s", err.Error())
+		return false
 	} else {
-		common.Log.Infof("Auth success!")
+		common.Log.Infof("Login successfully: %s", user.Username)
+		return true
 	}
-	return true
 }
 
 // google一次性验证码认证

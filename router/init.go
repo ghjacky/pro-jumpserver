@@ -16,4 +16,5 @@ func Init() {
 // register 注册子路由
 func Register() {
 	permissionRouter(R)
+	userRouter(R)
 }

@@ -2,8 +2,7 @@ package users
 
 import "zeus/models"
 
-func IsValid(username string) bool {
-	user := models.User{Username: username}
+func IsValid(user *models.User) bool {
 	if err := user.GetInfo(nil); err != nil {
 		return false
 	}
