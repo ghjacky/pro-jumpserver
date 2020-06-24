@@ -92,12 +92,11 @@ func (b *Banner) setMainMenu(idc string) {
 	mainMenu := Menu{
 		{showText: fmt.Sprintf("当前IDC: %s\n", idc)},
 		{id: 1, instruct: "ID", helpText: "直接登陆"},
-		{id: 2, instruct: "part IP, Hostname, Comment", helpText: "搜索，如果资产唯一，则直接登陆"},
-		{id: 3, instruct: "/ + IP, Hostname, Comment", helpText: "搜索, 例: /192.168"},
-		{id: 4, instruct: "p", helpText: "展示您有权限的资源"},
-		{id: 6, instruct: "r", helpText: "返回上一级"},
-		{id: 7, instruct: "h", helpText: "帮助菜单"},
-		{id: 8, instruct: "q", helpText: "退出"},
+		{id: 2, instruct: "Part of IP, Hostname, Comment", helpText: "搜索，如果资产唯一，则直接登陆"},
+		{id: 3, instruct: "p 或 回车", helpText: "展示您有权限的资源"},
+		{id: 4, instruct: "r", helpText: "返回上一级"},
+		{id: 5, instruct: "h", helpText: "帮助菜单"},
+		{id: 6, instruct: "q", helpText: "退出"},
 	}
 	b.Menu = mainMenu
 }

@@ -65,14 +65,6 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			ServerIP:  v.ServerIP,
 		}
 		me.ID = v.ID
-		// 登陆后首先更新用户活动状态(db)
-		var u models.User
-		if err := common.Mysql.Find(&u, "username = ?", v.User).Error; err != nil {
-			common.Log.Warnf("Couldn't find user: %s in db, maybe new user", v.User)
-			u.Username = v.User
-		}
-		u.Active = models.UserActiveYes
-		common.Mysql.Save(&u)
 		// 登陆事件相关部分信息写入mysql
 		common.Mysql.Create(&me)
 	case *LoginToServerEvent:

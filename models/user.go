@@ -57,7 +57,7 @@ func (u *User) FetchList(query Query) (total int, users Users, err error) {
 	if err = common.Mysql.Model(u).Where(whereClause).Count(&total).Error; err != nil {
 		return
 	}
-	if err = common.Mysql.Where(whereClause).Order(fmt.Sprintf("%s %s", orderBy, orderType)).Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+	if err = common.Mysql.Where(whereClause).Order("active desc").Order(fmt.Sprintf("%s %s", orderBy, orderType)).Offset(offset).Limit(limit).Find(&users).Error; err != nil {
 		return
 	}
 	return
