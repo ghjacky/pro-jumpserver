@@ -42,7 +42,7 @@ type Server struct {
 
 type Servers []*Server
 
-func (a *Asset) FetchList(args map[string]interface{}) (ms []IModel) {
+func (a *Asset) FetchList(args map[string]interface{}) (err error) {
 	return
 }
 func (a *Asset) GetInfo(...interface{}) (err error) {

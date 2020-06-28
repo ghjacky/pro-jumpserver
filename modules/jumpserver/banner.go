@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"text/template"
+	"time"
 	"zeus/common"
 	"zeus/utils"
 )
@@ -25,6 +26,7 @@ var IDCs []string
 
 func init() {
 	go func() {
+		time.Sleep(5 * time.Second)
 		for {
 			if len(common.Config.IDCs) != 0 {
 				IDCs = append(common.Config.IDCs, "全部")

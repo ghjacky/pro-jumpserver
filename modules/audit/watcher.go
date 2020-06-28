@@ -40,11 +40,6 @@ func (cw *ChanWriter) Watch(event IEvent, we chan bool) {
 	defer close(event.GetBuffer())
 	switch e := event.(type) {
 	case *KBEvent:
-		defer func() {
-			if err := (*e.Store).(FileStore).Close(); err != nil {
-				common.Log.Errorf("Failed to close file: %s", err.Error())
-			}
-		}()
 		for {
 			select {
 			case data := <-cw.ch:

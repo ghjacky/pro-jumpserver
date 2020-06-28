@@ -36,7 +36,6 @@ func (h *interactiveHandler) newEvent(t string) (e audit.IEvent) {
 
 // 监听键盘按键事件
 func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, watcherDone chan bool, loginServerEventId uuid.UUID) {
-
 	var flushDone = make(chan interface{}, 0)
 	// 文件事件存储器
 	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join([]string{SessionKBEventsStoreKeyPrefix, audit.EventTypeKeyBoardPress, h.serverIP, h.sessionID, loginServerEventId.String()}, "_")))
@@ -77,23 +76,21 @@ func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, wat
 }
 
 // 生成jump server登陆事件
+//var JpsFlushDone = make(chan interface{}, 0)
 func (h *interactiveHandler) generateJPSLoginEvent() {
-	var flushDone = make(chan interface{}, 0)
-	defer func() {
-		flushDone <- 1
-	}()
-	// 创建文件事件存储器（单字符事件和其他分开存储，单字符事件用于后续回放）
-	fsNormal := audit.NewStore(audit.StoreFile, path.Join(SessionNormalEventRecordDir, strings.Join([]string{SessionNormalEventsStoreKeyPrefix, audit.EventTypeUserLoginToJPS, h.userIP, h.sessionID}, "_")))
-
 	// 用户登陆成功, 获取相关信息，生成登陆事件并存储，此时，用户已进入被监控状态
 	loginEvent := h.newEvent(audit.EventTypeUserLoginToJPS).(*audit.LoginToJpsEvent)
 	loginEvent.Timestamp = time.Now().UnixNano()
 	loginEvent.ClientIP = h.userIP
 	loginEvent.ServerIP = h.jpsIP
-	loginEvent.SetStore(&fsNormal)
-	loginEvent.Buffer = make(chan []byte, 1)
 	loginEvent.ID = uuid.New()
-	go loginEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
+	loginEvent.Buffer = make(chan []byte, 1)
+
+	// 创建文件事件存储器（单字符事件和其他分开存储，单字符事件用于后续回放）
+	//fsNormal := audit.NewStore(audit.StoreFile, path.Join(SessionNormalEventRecordDir, strings.Join([]string{SessionNormalEventsStoreKeyPrefix, audit.EventTypeUserLoginToJPS, h.userIP, h.sessionID}, "_")))
+	//
+	//loginEvent.SetStore(&fsNormal)
+	//go loginEvent.FlushBuffer(JpsFlushDone, audit.SessionEventBufferFlushInterval)
 	// 更新登陆事件信息
 	if err := loginEvent.WriteToBuffer(loginEvent); err != nil {
 		common.Log.Errorf("Failed to write event to buffer")
@@ -103,23 +100,23 @@ func (h *interactiveHandler) generateJPSLoginEvent() {
 
 // 生成远程主机登陆事件
 func (h *interactiveHandler) generateServerLoginEvent() (loginServerEventID uuid.UUID) {
-	var flushDone = make(chan interface{}, 0)
-	defer func() {
-		flushDone <- 1
-	}()
+	//var flushDone = make(chan interface{}, 0)
+	//defer func() {
+	//	flushDone <- 1
+	//}()
 	// 用户登陆资产成功, 获取相关信息，生成登陆事件并存储，此时，用户已进入被监控状态
 	loginServerEvent := h.newEvent(audit.EventTypeUserLoginToServer).(*audit.LoginToServerEvent)
 	loginServerEvent.Timestamp = time.Now().UnixNano()
 	loginServerEvent.ClientIP = h.userIP
 	loginServerEvent.ServerIP = h.serverIP
 	loginServerEvent.ID = uuid.New()
+	loginServerEvent.Buffer = make(chan []byte, 1)
 
 	// 创建文件事件存储器（单字符事件和其他分开存储，单字符事件用于后续回放）
-	fsNormal := audit.NewStore(audit.StoreFile, path.Join(SessionNormalEventRecordDir, strings.Join([]string{SessionNormalEventsStoreKeyPrefix, audit.EventTypeUserLoginToServer, h.serverIP, h.sessionID, loginServerEvent.ID.String()}, "_")))
-
-	loginServerEvent.SetStore(&fsNormal)
-	loginServerEvent.Buffer = make(chan []byte, 1)
-	go loginServerEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
+	//fsNormal := audit.NewStore(audit.StoreFile, path.Join(SessionNormalEventRecordDir, strings.Join([]string{SessionNormalEventsStoreKeyPrefix, audit.EventTypeUserLoginToServer, h.serverIP, h.sessionID, loginServerEvent.ID.String()}, "_")))
+	//
+	//loginServerEvent.SetStore(&fsNormal)
+	//go loginServerEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
 	// 更新登陆事件信息
 	if err := loginServerEvent.WriteToBuffer(loginServerEvent); err != nil {
 		common.Log.Errorf("Failed to write event to buffer")

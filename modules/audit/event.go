@@ -59,7 +59,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
-			User:      v.User,
+			Username:  v.User,
 			Timestamp: v.Timestamp,
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
@@ -72,7 +72,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
-			User:      v.User,
+			Username:  v.User,
 			Timestamp: v.Timestamp,
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
@@ -85,7 +85,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
-			User:      v.User,
+			Username:  v.User,
 			Timestamp: v.Timestamp,
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
@@ -97,7 +97,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
-			User:      v.User,
+			Username:  v.User,
 			Timestamp: v.Timestamp,
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
@@ -109,7 +109,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			SessionID: v.SessionID,
 			Type:      v.Type,
 			Err:       v.Err,
-			User:      v.User,
+			Username:  v.User,
 			Timestamp: v.Timestamp,
 			ClientIP:  v.ClientIP,
 			ServerIP:  v.ServerIP,
@@ -136,8 +136,13 @@ func (e *Event) GetStore() (store *IStore) {
 
 func (e *Event) FlushBuffer(done chan interface{}, interval time.Duration) {
 	defer func() {
+		if (e.Store) == nil {
+			return
+		}
 		if err := (*e.Store).Close(); err != nil {
 			common.Log.Errorln("Couldn't close events store")
+		} else {
+			common.Log.Infof("Events store closed!")
 		}
 	}()
 	for {

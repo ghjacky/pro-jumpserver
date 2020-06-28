@@ -1,12 +1,11 @@
 package jumpserver
 
 import (
+	"github.com/gliderlabs/ssh"
 	"io"
 	"net"
 	"sync"
 	"zeus/common"
-
-	"github.com/gliderlabs/ssh"
 )
 
 type WrapperSession struct {
@@ -22,7 +21,10 @@ func (w *WrapperSession) initial() {
 }
 
 func (w *WrapperSession) readLoop() {
-	defer common.Log.Debug("session loop break")
+	defer func() {
+		common.Log.Debug("session loop break")
+		//JpsFlushDone <- 1
+	}()
 	buf := make([]byte, 1024*8)
 	for {
 		nr, err := w.Sess.Read(buf)

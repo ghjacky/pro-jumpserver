@@ -13,14 +13,10 @@ type User struct {
 	Valid    string `json:"valid" gorm:"default:'否'"`   // 账户可用状态：是、否
 	Active   string `json:"active" gorm:"default:'下线'"` // 账户登陆状态：在线、下线
 	Assets   Assets `gorm:"many2many:user_asset" json:"asset"`
+	Events   Events `json:"events" gorm:"foreignkey:Username"`
 }
 
 type Users []*User
-
-//type Permission struct {
-//	Username 		string
-//	AssetID 		string
-//}
 
 const (
 	UserValidYes  = "是"
@@ -28,14 +24,6 @@ const (
 	UserActiveYes = "在线"
 	UserActiveNo  = "下线"
 )
-
-type Query struct {
-	Dimension string `form:"dimension"`
-	Search    string `form:"search"`
-	Page      int    `form:"page"`
-	Limit     int    `form:"limit"`
-	Sort      string `form:"sort"`
-}
 
 func (u *User) FetchList(query Query) (total int, users Users, err error) {
 	var offset = 0
