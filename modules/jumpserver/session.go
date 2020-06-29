@@ -15,7 +15,7 @@ import (
 	"zeus/models"
 	"zeus/modules/assets"
 	"zeus/modules/audit"
-	"zeus/modules/users"
+	"zeus/modules/webserver/users"
 )
 
 const (

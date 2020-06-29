@@ -5,7 +5,7 @@ import (
 	"time"
 	"zeus/common"
 	"zeus/modules/jumpserver"
-	"zeus/modules/users"
+	"zeus/modules/webserver/users"
 	"zeus/router"
 )
 

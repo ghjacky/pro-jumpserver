@@ -11,7 +11,7 @@ import (
 	"rsc.io/qr"
 	"zeus/common"
 	"zeus/models"
-	"zeus/modules/users"
+	"zeus/modules/webserver/users"
 )
 
 const (

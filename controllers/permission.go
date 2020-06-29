@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"zeus/models"
-	"zeus/modules/users"
+	"zeus/modules/webserver/users"
 )
 
 func SetUserPermAssets(ctx *gin.Context) {

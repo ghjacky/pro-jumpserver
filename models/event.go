@@ -50,7 +50,7 @@ func (es *Events) GetEvents(query Query) (total int, err error) {
 	if err = common.Mysql.Model(Event{}).Where(whereClause).Count(&total).Error; err != nil {
 		return 0, err
 	}
-	if err = common.Mysql.Where(whereClause).Order(fmt.Sprintf("%s %s", orderBy, orderType)).Offset(offset).Limit(limit).Error; err != nil {
+	if err = common.Mysql.Where(whereClause).Order(fmt.Sprintf("%s %s", orderBy, orderType)).Offset(offset).Limit(limit).Find(es).Error; err != nil {
 		return 0, err
 	}
 	return
