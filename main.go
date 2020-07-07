@@ -6,6 +6,7 @@ import (
 	"zeus/common"
 	"zeus/modules/jumpserver"
 	"zeus/modules/webserver/users"
+	"zeus/modules/wsserver"
 	"zeus/router"
 )
 
@@ -25,13 +26,17 @@ func main() {
 	common.Configfile = flag.String("config", "./configs/config.toml", "Specify config file for server")
 	flag.Parse()
 	initAll()
+	// 运行web server
 	go func() {
 		if err := router.R.Run(common.Config.WebServerAddr); err != nil {
 			common.Log.Errorf("无法启动web服务:%s", err.Error())
 		}
 	}()
+	go monitorOsSignal()
+	// 运行websocket server
+	go wsserver.Run()
 	defer common.Exit()
-	bgJobs()
+	//bgJobs()
 	//jumpserver.GenGACqr()
 	// 运行jumpserver
 	jumpserver.InitJumpServer()

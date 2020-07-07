@@ -19,16 +19,16 @@ type EscapeCodes struct {
 }
 
 var vt100EscapeCodes = EscapeCodes{
-	Black:   []byte{keyEscape, '[', '3', '0', 'm'},
-	Red:     []byte{keyEscape, '[', '3', '1', 'm'},
-	Green:   []byte{keyEscape, '[', '3', '2', 'm'},
-	Yellow:  []byte{keyEscape, '[', '3', '3', 'm'},
-	Blue:    []byte{keyEscape, '[', '3', '4', 'm'},
-	Magenta: []byte{keyEscape, '[', '3', '5', 'm'},
-	Cyan:    []byte{keyEscape, '[', '3', '6', 'm'},
-	White:   []byte{keyEscape, '[', '3', '7', 'm'},
+	Black:   []byte{keyEscape, '[', '0', '1', ';', '3', '0', 'm'},
+	Red:     []byte{keyEscape, '[', '0', '1', ';', '3', '1', 'm'},
+	Green:   []byte{keyEscape, '[', '0', '1', ';', '3', '2', 'm'},
+	Yellow:  []byte{keyEscape, '[', '0', '1', ';', '3', '3', 'm'},
+	Blue:    []byte{keyEscape, '[', '0', '1', ';', '3', '4', 'm'},
+	Magenta: []byte{keyEscape, '[', '0', '1', ';', '3', '5', 'm'},
+	Cyan:    []byte{keyEscape, '[', '0', '1', ';', '3', '6', 'm'},
+	White:   []byte{keyEscape, '[', '0', '1', ';', '3', '7', 'm'},
 
-	Reset: []byte{keyEscape, '[', '0', 'm'},
+	Reset: []byte{keyEscape, '[', '0', '0', 'm'},
 }
 
 // Terminal contains the state for running a VT100 terminal that is capable of
@@ -95,13 +95,13 @@ type Terminal struct {
 // a local terminal, that terminal must first have been put into raw mode.
 // prompt is a string that is written at the start of each input line (i.e.
 // "> ").
-func NewTerminal(c io.ReadWriter, prompt string) *Terminal {
+func NewTerminal(c io.ReadWriter, prompt string, width, height int) *Terminal {
 	return &Terminal{
 		Escape:       &vt100EscapeCodes,
 		c:            c,
 		prompt:       []rune(prompt),
-		termWidth:    80,
-		termHeight:   24,
+		termWidth:    width,
+		termHeight:   height,
 		echo:         true,
 		historyIndex: -1,
 	}
@@ -705,6 +705,12 @@ func (t *Terminal) ReadLine() (line string, err error) {
 	defer t.lock.Unlock()
 
 	return t.readLine()
+}
+
+func (t *Terminal) ExactlyReadTheFuckingLine(key rune) (line string, ok bool) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	return t.handleKey(key)
 }
 
 func (t *Terminal) SetEcho(echo bool) {

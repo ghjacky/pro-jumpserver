@@ -83,7 +83,6 @@ func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
 }
 
 // ldap 认证
-
 func authLDAP(user models.User, pass string) (res bool) {
 	defer func() {
 		_ = common.LdapConn.Bind(common.Config.LdapConfig.BindUser, common.Config.LdapConfig.Password)

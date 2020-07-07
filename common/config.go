@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/spf13/viper"
+	"net"
 	"os"
 	"strings"
 )
@@ -10,6 +11,9 @@ import (
 const (
 	DefaultWebServerAddr  = "0.0.0.0:8080"
 	DefaultJumpServerAddr = "0.0.0.0:2222"
+	DefaultWSPath         = "/socket.io"
+	DefaultWSStaticPath   = "./asset"
+	DefaultWSListen       = "0.0.0.0:18083"
 	DefaultWorkDir        = "/tmp/var/lib/zeus"
 	DefaultDataDir        = "/tmp/var/lib/zeus/data"
 	DefaultPlayDir        = "/tmp/var/lib/zeus/play"
@@ -30,6 +34,9 @@ const (
 type mainConfig struct {
 	WebServerAddr  string
 	JumpServerAddr string
+	WSPath         string
+	WSStaticPath   string
+	WSListen       string
 	WorkDir        string
 	DataDir        string
 	PlayDir        string
@@ -59,6 +66,9 @@ func (c *config) initConfig() {
 	} else {
 		c.WebServerAddr = viper.GetString("main.webServerAddr")
 		c.JumpServerAddr = viper.GetString("main.JumpServerAddr")
+		c.WSPath = viper.GetString("main.ws_path")
+		c.WSStaticPath = viper.GetString("main.ws_static_path")
+		c.WSListen = viper.GetString("main.ws_listen")
 		c.WorkDir = viper.GetString("main.workDir")
 		c.DataDir = viper.GetString("main.dataDir")
 		c.PlayDir = viper.GetString("main.playDir")
@@ -103,6 +113,16 @@ func (c *config) checkAndSetDefault() {
 	}
 	if len(c.mainConfig.WebServerAddr) == 0 {
 		c.mainConfig.WebServerAddr = DefaultWebServerAddr
+	}
+	if len(c.mainConfig.WSPath) == 0 {
+		c.mainConfig.WSPath = DefaultWSPath
+	}
+	if len(c.mainConfig.WSStaticPath) == 0 {
+		c.mainConfig.WSStaticPath = DefaultWSStaticPath
+	}
+	if _, err := net.ResolveTCPAddr("tcp4", c.mainConfig.WSListen); err != nil {
+		Log.Warnf("Websocket listen config error, using default")
+		c.mainConfig.WSListen = DefaultWSListen
 	}
 	if len(c.mainConfig.WorkDir) == 0 {
 		c.mainConfig.WorkDir = DefaultWorkDir

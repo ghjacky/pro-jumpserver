@@ -54,6 +54,7 @@ func NewJumpServer(jc JumpConfig) (js *JumpServer) {
 var JPS *JumpServer
 var SessionNormalEventRecordDir string
 var SessionKBEventRecordDir string
+var SessionCommandRecordDir string
 
 func InitJumpServer() {
 	var currentUser, _ = user.Current()
@@ -67,13 +68,17 @@ func InitJumpServer() {
 		PlayDir: common.Config.PlayDir,
 	})
 	// 创建event存储目录（文件存储器）
-	SessionNormalEventRecordDir = path.Join(common.Config.DataDir, "sessions", "events", "normal")
+	SessionNormalEventRecordDir = path.Join(common.Config.DataDir, "sessions", "events", "login")
 	SessionKBEventRecordDir = path.Join(common.Config.DataDir, "sessions", "events", "kb")
+	SessionCommandRecordDir = path.Join(common.Config.DataDir, "sessions", "events", "cmd")
 	if err := os.MkdirAll(SessionNormalEventRecordDir, common.DefaultDirMode); err != nil {
 		common.Log.Fatalf("couldn't create session normal events store dir: %s", SessionNormalEventRecordDir)
 	}
 	if err := os.MkdirAll(SessionKBEventRecordDir, common.DefaultDirMode); err != nil {
 		common.Log.Fatalf("couldn't create session kb events store dir: %s", SessionKBEventRecordDir)
+	}
+	if err := os.MkdirAll(SessionCommandRecordDir, common.DefaultDirMode); err != nil {
+		common.Log.Fatalf("couldn't create session cmd events store dir: %s", SessionCommandRecordDir)
 	}
 }
 

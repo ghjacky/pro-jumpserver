@@ -30,28 +30,66 @@ func (h *interactiveHandler) newEvent(t string) (e audit.IEvent) {
 			Event: ce,
 		}
 		e.(*audit.KBEvent).Type = audit.EventTypeKeyBoardPress
+	case audit.EventTypeUserExecCommandOnServer:
+		e = &audit.ExecEvent{
+			Event: ce,
+		}
+		e.(*audit.ExecEvent).Type = audit.EventTypeUserExecCommandOnServer
 	}
 	return
 }
 
+// 监听命令执行事件
+func (h *interactiveHandler) WatchExecEvent(execWatcherExitChan chan bool, loginServerEventId uuid.UUID) {
+	execOnServerEvent := h.newEvent(audit.EventTypeUserExecCommandOnServer).(*audit.ExecEvent)
+	execOnServerEvent.Timestamp = time.Now().UnixNano()
+	execOnServerEvent.ClientIP = h.userIP
+	execOnServerEvent.ServerIP = h.serverIP
+	execOnServerEvent.Buffer = make(chan []byte, 1)
+	// 创建文件事件存储器（单字符事件和其他分开存储，单字符事件用于后续回放）
+	fsExec := audit.NewStore(audit.StoreFile, path.Join(SessionCommandRecordDir, strings.Join(
+		[]string{audit.EventTypeUserExecCommandOnServer,
+			h.serverIP,
+			h.sessionID,
+			loginServerEventId.String()}, "_")))
+	execOnServerEvent.SetStore(&fsExec)
+	var flushDone = make(chan interface{}, 1)
+	var watchDone = make(chan bool, 1)
+	go func(execWatcherExitChan chan bool) {
+		for {
+			select {
+			case <-execWatcherExitChan:
+				flushDone <- 1
+				watchDone <- true
+			}
+		}
+	}(execWatcherExitChan)
+	go execOnServerEvent.FlushBuffer(flushDone, SessionEventBufferFlushInterval)
+	go h.Watch(execOnServerEvent, watchDone)
+}
+
 // 监听键盘按键事件
-func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, watcherDone chan bool, loginServerEventId uuid.UUID) {
+func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone chan bool, loginServerEventId uuid.UUID) {
 	var flushDone = make(chan interface{}, 0)
 	// 文件事件存储器
-	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join([]string{SessionKBEventsStoreKeyPrefix, audit.EventTypeKeyBoardPress, h.serverIP, h.sessionID, loginServerEventId.String()}, "_")))
+	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join(
+		[]string{audit.EventTypeKeyBoardPress,
+			h.serverIP,
+			h.sessionID,
+			loginServerEventId.String()}, "_")))
 
 	// 监控h.term输入输出及错误 生成相应事件并存储
 	sout, _ := session.StdoutPipe()
-
 	// 监控terminal按键，生成并存储事件
 	kbEvent := h.newEvent(audit.EventTypeKeyBoardPress).(*audit.KBEvent)
 	kbEvent.ClientIP = h.serverIP
 	kbEvent.ServerIP = h.serverIP
 	kbEvent.SetStore(&fsKB)
-	kbEvent.Buffer = make(chan []byte, 10240)
+	kbEvent.Buffer = make(chan []byte, 1024*8)
 	// goroutine 后台定时从flush buffer到store
-	go kbEvent.FlushBuffer(flushDone, audit.SessionEventBufferFlushInterval)
+	go kbEvent.FlushBuffer(flushDone, SessionEventBufferFlushInterval)
 	//
+	var watchDone = make(chan bool, 1)
 	go func(se chan bool) {
 		defer func() {
 			flushDone <- 1
@@ -61,18 +99,20 @@ func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone, wat
 			case done := <-se:
 				if done {
 					common.Log.Infoln("io copy stopping")
+					watchDone <- true
 					return
 				}
 			default:
-				mw := io.MultiWriter(h.term.c, h.kbEventWriter)
+				// 此处绑定并分流
+				mw := io.MultiWriter(h.term.c, h)
 				_, err := io.Copy(mw, sout)
 				if err != nil {
-					common.Log.Errorln("io error sout")
+					common.Log.Errorf("io error sout: %s", err.Error())
 				}
 			}
 		}
 	}(sessionDone)
-	go h.kbEventWriter.Watch(kbEvent, watcherDone)
+	go h.Watch(kbEvent, watchDone)
 }
 
 // 生成jump server登陆事件

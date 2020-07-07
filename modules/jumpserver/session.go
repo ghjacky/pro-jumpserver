@@ -4,24 +4,23 @@ import (
 	"fmt"
 	"github.com/gliderlabs/ssh"
 	ssh2 "golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"zeus/common"
 	"zeus/models"
 	"zeus/modules/assets"
-	"zeus/modules/audit"
 	"zeus/modules/webserver/users"
 )
 
 const (
-	SessionRedisPrefix                = "zeus_jump_session"
-	SessionNormalEventsStoreKeyPrefix = "session_NM"
-	SessionKBEventsStoreKeyPrefix     = "session_KB"
+	SessionRedisPrefix                 = "zeus_jump_session"
+	SessionNormalEventsStoreKeyPrefix  = "session_NM"
+	SessionKBEventsStoreKeyPrefix      = "session_KB"
+	SessionCommandEventsStoreKeyPrefix = "session_CMD"
 	//SessionEventBufferFlushInterval   = 100 * time.Millisecond
 	SessionTerminalPrompt = "JPS >> "
 )
@@ -42,7 +41,11 @@ type interactiveHandler struct {
 	userIP        string
 	jpsIP         string
 	serverIP      string
-	kbEventWriter *audit.ChanWriter
+	kbEventWriter *ChanWriter
+	commandCh     chan []byte
+	env           map[string]string
+	sessionPrompt []byte
+	commandBuffer []byte
 }
 
 // sessionHandler handle user connection when connecting to jumpserver
@@ -117,7 +120,7 @@ func sessionHandler(session ssh.Session) {
 		// session退出前关闭相应缓冲区
 		defer func() {
 			// 关闭eventWriter
-			if err := handler.kbEventWriter.Close(); err != nil {
+			if err := handler.Close(); err != nil {
 				common.Log.Errorln("couldn't close watcher channel")
 			} else {
 				common.Log.Infoln("closing watcher channel")
@@ -152,7 +155,7 @@ func sessionHandler(session ssh.Session) {
 
 func newInteractiveHandler(sess ssh.Session, user string) *interactiveHandler {
 	wrapperSess := NewWrapperSession(sess)
-	term := NewTerminal(wrapperSess, SessionTerminalPrompt)
+	term := NewTerminal(wrapperSess, SessionTerminalPrompt, 80, 24)
 	handler := &interactiveHandler{
 		sess: wrapperSess,
 		user: user,
@@ -169,11 +172,32 @@ func (h *interactiveHandler) Initial(session ssh.Session) {
 	h.sessionID = session.Context().Value(ssh.ContextKeySessionID).(string)
 	h.userIP, _, _ = net.SplitHostPort(session.RemoteAddr().String())
 	h.jpsIP, _, _ = net.SplitHostPort(session.LocalAddr().String())
-	h.kbEventWriter = audit.NewChanWriter()
+	h.kbEventWriter = NewChanWriter()
 	banner := newDefaultBanner()
 	h.Banner = banner
 	h.displayBanner()
 	h.winWatchChan = make(chan bool)
+	h.commandCh = make(chan []byte, 0)
+	h.sessionPrompt = make([]byte, 0)
+	h.commandBuffer = make([]byte, 0)
+	h.env = map[string]string{}
+	h.parEnv(session.Environ())
+}
+
+func (h *interactiveHandler) parEnv(env []string) {
+	for _, s := range env {
+		kv := strings.Split(s, "=")
+		if len(kv) > 1 {
+			h.env[kv[0]] = kv[1]
+		}
+	}
+}
+
+func (h *interactiveHandler) Reset() {
+	h.winWatchChan = make(chan bool)
+	h.commandCh = make(chan []byte, 0)
+	h.sessionPrompt = make([]byte, 0)
+	h.commandBuffer = make([]byte, 0)
 }
 
 func (h *interactiveHandler) displayBanner() {
@@ -343,6 +367,7 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 			as = ias.(*assets.ASSH)
 			// 建立一个到远端主机到ssh session
 			subSession := as.NewSession().(*ssh2.Session)
+			defer subSession.Close()
 			if subSession != nil {
 				if err := h.Terminal(subSession); err != nil {
 					common.Log.Errorf("Couldn't connect to host: %s:%d using ssh", as.IP, as.PORT)
@@ -363,9 +388,10 @@ func (h *interactiveHandler) displaySearchedServers() {
 	}
 }
 
+var sessionExitChan = make(chan bool, 0)
+var execWatcherExitChan = make(chan bool, 0)
+
 func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
-	var watcherExitChan = make(chan bool, 0)
-	var sessionExitChan = make(chan bool, 0)
 	modes := ssh2.TerminalModes{
 		ssh2.ECHO:          1,
 		ssh2.ECHOCTL:       0,
@@ -374,23 +400,63 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	}
 	// 生成资产登陆事件并存储
 	// 开始监控keyboard single character事件, 并存储，用户后续播放
-	h.WatchKBEvent(session, sessionExitChan, watcherExitChan, h.generateServerLoginEvent())
-	//session.Stdout = h.term.c
+	loginServerEventId := h.generateServerLoginEvent()
+	h.WatchKBEvent(session, sessionExitChan, loginServerEventId)
+
+	session.Stdout = h.term.c
 	session.Stdin = h.term.c
 	session.Stderr = h.term.c
-	termFD := int(os.Stdin.Fd())
+
+	// 监控命令执行
+	go h.WatchExecEvent(execWatcherExitChan, loginServerEventId)
+
 	width, height := h.term.GetSize()
-	termState, _ := terminal.MakeRaw(termFD)
-	defer func() {
-		if err := terminal.Restore(termFD, termState); err != nil {
-			common.Log.Errorln("Couldn't restore original terminal")
-		}
-	}()
+	//termFD := int(os.Stdin.Fd())
+	//termState, _ := terminal.MakeRaw(termFD)
+	//defer func() {
+	//	if err := terminal.Restore(termFD, termState); err != nil {
+	//		common.Log.Errorln("Couldn't restore original terminal")
+	//	}
+	//}()
 	err = session.RequestPty("xterm-256color", height, width, modes)
 	err = session.Shell()
 	err = session.Wait()
 	// session退出后通过发送退出信号，关闭相应goroutine和io等
+	h.Reset()
+	execWatcherExitChan <- true
 	sessionExitChan <- true
-	watcherExitChan <- true
 	return
 }
+
+func ExitSessionBgTask(millisecond time.Duration) {
+	var done chan interface{}
+	go func() {
+		time.Sleep(millisecond * time.Millisecond)
+		done <- 1
+	}()
+	for {
+		select {
+		case <-done:
+			break
+		default:
+			execWatcherExitChan <- true
+			sessionExitChan <- true
+			break
+		}
+	}
+}
+
+//type ChanBuffer chan []byte
+//
+//func (cb ChanBuffer) Read(p []byte) (n int, err error) {
+//
+//}
+//
+//func (cb ChanBuffer) Write(p []byte) (n int, err error) {
+//
+//}
+//
+//func (cb ChanBuffer) Close() error{
+//	close(cb)
+//	return nil
+//}

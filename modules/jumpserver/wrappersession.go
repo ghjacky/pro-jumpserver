@@ -55,6 +55,7 @@ func (w *WrapperSession) Close() error {
 	return err
 }
 
+// 此处为向ssh.session写入数据
 func (w *WrapperSession) Write(p []byte) (int, error) {
 	return w.Sess.Write(p)
 }

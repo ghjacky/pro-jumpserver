@@ -91,6 +91,7 @@ func (*Event) Marshal(e IEvent) (data []byte) {
 			ServerIP:  v.ServerIP,
 			Bin:       v.Bin,
 			Command:   v.Command,
+			Data:      []byte(v.Command),
 		}
 	case *FileEvent:
 		me = models.Event{
