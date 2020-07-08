@@ -17,7 +17,7 @@ require (
 	github.com/jinzhu/gorm v1.9.10
 	github.com/leonelquinteros/gotext v1.4.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/nsf/termbox-go v0.0.0-20200418040025-38ba6e5628f1
+	github.com/nsf/termbox-go v0.0.0-20200418040025-38ba6e5628f1 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.4.0
 	github.com/t-tomalak/logrus-easy-formatter v0.0.0-20190702153535-a799195806ed

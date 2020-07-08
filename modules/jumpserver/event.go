@@ -2,8 +2,6 @@ package jumpserver
 
 import (
 	"github.com/google/uuid"
-	"golang.org/x/crypto/ssh"
-	"io"
 	"path"
 	"strings"
 	"time"
@@ -53,24 +51,24 @@ func (h *interactiveHandler) WatchExecEvent(execWatcherExitChan chan bool, login
 			h.sessionID,
 			loginServerEventId.String()}, "_")))
 	execOnServerEvent.SetStore(&fsExec)
+	h.mu.Lock()
 	var flushDone = make(chan interface{}, 1)
-	var watchDone = make(chan bool, 1)
-	go func(execWatcherExitChan chan bool) {
-		for {
-			select {
-			case <-execWatcherExitChan:
-				flushDone <- 1
-				watchDone <- true
-			}
-		}
-	}(execWatcherExitChan)
 	go execOnServerEvent.FlushBuffer(flushDone, SessionEventBufferFlushInterval)
+	var watchDone = make(chan bool, 1)
 	go h.Watch(execOnServerEvent, watchDone)
+	h.mu.Unlock()
+	for {
+		select {
+		case <-execWatcherExitChan:
+			flushDone <- 1
+			watchDone <- true
+			return
+		}
+	}
 }
 
 // 监听键盘按键事件
-func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone chan bool, loginServerEventId uuid.UUID) {
-	var flushDone = make(chan interface{}, 0)
+func (h *interactiveHandler) WatchKBEvent(kbWatcherExitChan chan bool, loginServerEventId uuid.UUID) {
 	// 文件事件存储器
 	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join(
 		[]string{audit.EventTypeKeyBoardPress,
@@ -78,8 +76,6 @@ func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone chan
 			h.sessionID,
 			loginServerEventId.String()}, "_")))
 
-	// 监控h.term输入输出及错误 生成相应事件并存储
-	sout, _ := session.StdoutPipe()
 	// 监控terminal按键，生成并存储事件
 	kbEvent := h.newEvent(audit.EventTypeKeyBoardPress).(*audit.KBEvent)
 	kbEvent.ClientIP = h.serverIP
@@ -87,32 +83,21 @@ func (h *interactiveHandler) WatchKBEvent(session *ssh.Session, sessionDone chan
 	kbEvent.SetStore(&fsKB)
 	kbEvent.Buffer = make(chan []byte, 1024*8)
 	// goroutine 后台定时从flush buffer到store
+	h.mu.Lock()
+	var flushDone = make(chan interface{}, 0)
 	go kbEvent.FlushBuffer(flushDone, SessionEventBufferFlushInterval)
 	//
 	var watchDone = make(chan bool, 1)
-	go func(se chan bool) {
-		defer func() {
-			flushDone <- 1
-		}()
-		for {
-			select {
-			case done := <-se:
-				if done {
-					common.Log.Infoln("io copy stopping")
-					watchDone <- true
-					return
-				}
-			default:
-				// 此处绑定并分流
-				mw := io.MultiWriter(h.term.c, h)
-				_, err := io.Copy(mw, sout)
-				if err != nil {
-					common.Log.Errorf("io error sout: %s", err.Error())
-				}
-			}
-		}
-	}(sessionDone)
 	go h.Watch(kbEvent, watchDone)
+	h.mu.Unlock()
+	for {
+		select {
+		case <-kbWatcherExitChan:
+			flushDone <- 1
+			watchDone <- true
+			return
+		}
+	}
 }
 
 // 生成jump server登陆事件

@@ -170,8 +170,8 @@ func (*Event) WriteToBuffer(e IEvent) (err error) {
 	lock := sync.Mutex{}
 	isSuc := make(chan bool, 0)
 	go func() {
-		e.GetBuffer() <- e.Marshal(e)
 		lock.Lock()
+		e.GetBuffer() <- e.Marshal(e)
 		isSuc <- true
 		lock.Unlock()
 	}()

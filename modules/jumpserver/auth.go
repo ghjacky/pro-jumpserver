@@ -27,8 +27,6 @@ const (
 var gacSecret = []byte{'&', 'b', 'A', '!', ';', 'O', '\'', 'd', 'z', '1'}
 
 func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res bool) {
-	// 生成用户登陆事件
-
 	// 登陆认证
 	username := ctx.User()
 	answers, err := challenge(username, kbiInstruction, []string{kbiQuestionPassword, kbiQuestionCode}, []bool{false, true})
@@ -88,7 +86,7 @@ func authLDAP(user models.User, pass string) (res bool) {
 		_ = common.LdapConn.Bind(common.Config.LdapConfig.BindUser, common.Config.LdapConfig.Password)
 	}()
 	if err := common.LdapConn.Bind(fmt.Sprintf("%s@aibee", user.Username), pass); err != nil {
-		common.Log.Errorf("Authentication failure for user: %s", err.Error())
+		common.Log.Errorf("Authentication failure for user (%s): %s", user.Username, err.Error())
 		return false
 	} else {
 		common.Log.Infof("Login successfully: %s", user.Username)

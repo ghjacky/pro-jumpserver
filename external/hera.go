@@ -42,12 +42,8 @@ func FetchTags() (tags []string) {
 }
 
 func FetchServersByTag(tag string) (servers models.Servers) {
-	s := models.Server{}
-	s.IP = "172.16.244.28"
-	s.Hostname = "dev_server"
-	s.IDC = "天津"
-	s.Type = "ssh"
-	s.Port = 22
-	servers = append(servers, &s)
+	//
+	//
+	//
 	return
 }

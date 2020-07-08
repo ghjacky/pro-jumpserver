@@ -105,3 +105,32 @@ func WrapperWarn(text string) string {
 	text += "\n\r"
 	return WrapperString(text, Red)
 }
+
+func IsWordCutSetChar(b rune) bool {
+	switch b {
+	case ' ':
+		return true
+	default:
+		return false
+	}
+}
+
+func TrimWordCutSetChar(s string) string {
+	for l := len(s); len(s) > 0; {
+		s = strings.TrimSpace(s)
+		// add statement to trim other char here ...
+		//
+		//
+		if len(s) < l {
+			continue
+		} else {
+			break
+		}
+	}
+	return s
+}
+
+func IsStringContainsWordCutSetChar(s string) bool {
+	s = TrimWordCutSetChar(s)
+	return strings.Contains(s, " ") // || 此处添加其他字符contains判断
+}

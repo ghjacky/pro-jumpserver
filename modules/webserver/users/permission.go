@@ -57,14 +57,23 @@ func FilterPermissionServersByIDC(user *models.User, idc string) (ss models.Serv
 		common.Log.Errorf("获取用户：%s的权限资源失败：%s", user.Username, err.Error())
 		//return nil
 	}
+	for _, ast := range user.Assets {
+		ss = append(ss, ast.Servers...)
+	}
 	////// 测试数据
 	s := models.Server{}
 	s.IP = "172.16.244.28"
-	s.Hostname = "dev_server"
+	s.Hostname = "dev_server_01"
 	s.IDC = "天津"
 	s.Type = "ssh"
 	s.Port = 22
-	ss = models.Servers{&s}
+	s1 := models.Server{}
+	s1.IP = "172.16.244.29"
+	s1.Hostname = "dev_server_02"
+	s1.IDC = "天津"
+	s1.Type = "ssh"
+	s1.Port = 22
+	ss = append(ss, []*models.Server{&s, &s1}...)
 	//////
 	// 根据IDC名称过滤权限资源
 	wg := sync.WaitGroup{}

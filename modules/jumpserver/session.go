@@ -36,16 +36,14 @@ type interactiveHandler struct {
 	servers         models.Servers
 	searchedServers models.Servers
 	Banner
-	selectedIDC   string
-	sessionID     string
-	userIP        string
-	jpsIP         string
-	serverIP      string
-	kbEventWriter *ChanWriter
-	commandCh     chan []byte
-	env           map[string]string
-	sessionPrompt []byte
-	commandBuffer []byte
+	selectedIDC     string
+	sessionID       string
+	userIP          string
+	jpsIP           string
+	serverIP        string
+	kbEventWriter   *ChanWriter
+	execEventWriter *LineChanWriter
+	env             map[string]string
 }
 
 // sessionHandler handle user connection when connecting to jumpserver
@@ -120,7 +118,7 @@ func sessionHandler(session ssh.Session) {
 		// session退出前关闭相应缓冲区
 		defer func() {
 			// 关闭eventWriter
-			if err := handler.Close(); err != nil {
+			if err := handler.kbEventWriter.Close(); err != nil {
 				common.Log.Errorln("couldn't close watcher channel")
 			} else {
 				common.Log.Infoln("closing watcher channel")
@@ -172,14 +170,12 @@ func (h *interactiveHandler) Initial(session ssh.Session) {
 	h.sessionID = session.Context().Value(ssh.ContextKeySessionID).(string)
 	h.userIP, _, _ = net.SplitHostPort(session.RemoteAddr().String())
 	h.jpsIP, _, _ = net.SplitHostPort(session.LocalAddr().String())
-	h.kbEventWriter = NewChanWriter()
 	banner := newDefaultBanner()
 	h.Banner = banner
 	h.displayBanner()
 	h.winWatchChan = make(chan bool)
-	h.commandCh = make(chan []byte, 0)
-	h.sessionPrompt = make([]byte, 0)
-	h.commandBuffer = make([]byte, 0)
+	h.kbEventWriter = NewChanWriter(h)
+	h.execEventWriter = NewLineChanWriter(h)
 	h.env = map[string]string{}
 	h.parEnv(session.Environ())
 }
@@ -192,12 +188,20 @@ func (h *interactiveHandler) parEnv(env []string) {
 		}
 	}
 }
-
+func (h *interactiveHandler) Set() {
+	h.term.SetPrompt("")
+	h.term.moveCursorToPos(0)
+	h.term.history.entries = make([]string, h.term.history.max)
+	h.term.history.head = 0
+	h.term.history.size = 0
+}
 func (h *interactiveHandler) Reset() {
+	h.env = map[string]string{}
 	h.winWatchChan = make(chan bool)
-	h.commandCh = make(chan []byte, 0)
-	h.sessionPrompt = make([]byte, 0)
-	h.commandBuffer = make([]byte, 0)
+	h.term.SetPrompt(SessionTerminalPrompt)
+	h.term.history.entries = make([]string, h.term.history.max)
+	h.term.history.head = 0
+	h.term.history.size = 0
 }
 
 func (h *interactiveHandler) displayBanner() {
@@ -275,6 +279,7 @@ func (h *interactiveHandler) selectIDC(sessionExitSignal chan bool) {
 
 func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 	for {
+
 		line, err := h.term.ReadLine()
 
 		if err != nil {
@@ -291,9 +296,10 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 		line = strings.TrimSpace(line)
 		//<-h.assetDataLoaded
 		switch len(line) {
-		case 0, 1:
+		case 0:
+		case 1:
 			switch strings.ToLower(line) {
-			case "", "p":
+			case "p":
 				h.mu.RLock()
 				// 展示资源
 				h.displayAllAssets()
@@ -343,7 +349,7 @@ func (h *interactiveHandler) displayAllAssets() {
 func (h *interactiveHandler) searchAssets(pattern string) {
 	h.searchedServers = []*models.Server{}
 	for i, a := range h.servers {
-		if strings.Contains(a.Hostname, pattern) || strings.Contains(a.IP, pattern) || strings.Contains(fmt.Sprintf("%d", i+1), pattern) {
+		if strings.HasPrefix(a.Hostname, pattern) || strings.HasPrefix(a.IP, pattern) || strings.HasPrefix(fmt.Sprintf("%d", i+1), pattern) {
 			h.searchedServers = append(h.searchedServers, a)
 		}
 	}
@@ -388,8 +394,7 @@ func (h *interactiveHandler) displaySearchedServers() {
 	}
 }
 
-var sessionExitChan = make(chan bool, 0)
-var execWatcherExitChan = make(chan bool, 0)
+var sessionDone = make(chan bool, 0)
 
 func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	modes := ssh2.TerminalModes{
@@ -398,17 +403,90 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 		ssh2.TTY_OP_ISPEED: 14400,
 		ssh2.TTY_OP_OSPEED: 14400,
 	}
-	// 生成资产登陆事件并存储
+
 	// 开始监控keyboard single character事件, 并存储，用户后续播放
 	loginServerEventId := h.generateServerLoginEvent()
-	h.WatchKBEvent(session, sessionExitChan, loginServerEventId)
-
-	session.Stdout = h.term.c
-	session.Stdin = h.term.c
-	session.Stderr = h.term.c
+	var kbWatcherExitChan = make(chan bool, 0)
+	go h.WatchKBEvent(kbWatcherExitChan, loginServerEventId)
 
 	// 监控命令执行
+	var execWatcherExitChan = make(chan bool, 0)
 	go h.WatchExecEvent(execWatcherExitChan, loginServerEventId)
+
+	//session.Stdout = h.term.c
+	//session.Stdin = h.term.c
+	//session.Stderr = h.term.c
+	// 监控h.term输入输出及错误 生成相应事件并存储
+	sout, oerr := session.StdoutPipe()
+	sin, ierr := session.StdinPipe()
+	serr, eerr := session.StderrPipe()
+	if oerr != nil || ierr != nil || eerr != nil {
+		common.Log.Errorf("session 绑定失败，退出")
+		execWatcherExitChan <- true
+		kbWatcherExitChan <- true
+		return
+	}
+	// 此处绑定并分流stdin\stdout\stderr
+	stdc := make(chan interface{}, 3)
+	go func() {
+		mw := io.MultiWriter(h.term.c, h.kbEventWriter)
+		for {
+			select {
+			case <-stdc:
+				return
+			default:
+				_, ie := io.Copy(mw, sout)
+				if ie != nil {
+					common.Log.Errorf("io error (sout): %s", ie.Error())
+				}
+			}
+		}
+	}()
+	go func() {
+		mw := io.MultiWriter(h.term.c, h.kbEventWriter)
+		for {
+			select {
+			case <-stdc:
+				return
+			default:
+				_, oe := io.Copy(mw, serr)
+				if oe != nil {
+					common.Log.Errorf("io error (serr): %s", oe.Error())
+				}
+			}
+		}
+	}()
+	go func() {
+		mw := io.MultiWriter(h.execEventWriter, sin)
+		for {
+			select {
+			case <-stdc:
+				return
+			default:
+				_, ee := io.Copy(mw, h.term.c)
+				if ee != nil {
+					common.Log.Errorf("io error (sin): %s", ee.Error())
+				}
+			}
+		}
+	}()
+	// session结束时终止后台监控任务
+	go func() {
+		for {
+			select {
+			case done := <-sessionDone:
+				if done {
+					common.Log.Infoln("session done")
+					stdc <- "sin"
+					stdc <- "serr"
+					stdc <- "sout"
+					execWatcherExitChan <- true
+					kbWatcherExitChan <- true
+					return
+				}
+			}
+		}
+	}()
 
 	width, height := h.term.GetSize()
 	//termFD := int(os.Stdin.Fd())
@@ -419,12 +497,14 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	//	}
 	//}()
 	err = session.RequestPty("xterm-256color", height, width, modes)
+	// 登陆到远程主机,重置相关项（设置prompt长度为0，以使cursorX表现正常）
+	h.Set()
 	err = session.Shell()
 	err = session.Wait()
-	// session退出后通过发送退出信号，关闭相应goroutine和io等
+	// session退出，重置相关项
 	h.Reset()
-	execWatcherExitChan <- true
-	sessionExitChan <- true
+	// session退出后通过发送退出信号，关闭相应goroutine和io等
+	sessionDone <- true
 	return
 }
 
@@ -439,8 +519,7 @@ func ExitSessionBgTask(millisecond time.Duration) {
 		case <-done:
 			break
 		default:
-			execWatcherExitChan <- true
-			sessionExitChan <- true
+			sessionDone <- true
 			break
 		}
 	}

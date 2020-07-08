@@ -9,6 +9,7 @@ import (
 )
 
 type WrapperSession struct {
+	tabKCount uint
 	Sess      ssh.Session
 	inWriter  io.WriteCloser
 	outReader io.ReadCloser
@@ -45,7 +46,20 @@ func (w *WrapperSession) readLoop() {
 func (w *WrapperSession) Read(p []byte) (int, error) {
 	w.mux.RLock()
 	defer w.mux.RUnlock()
-	return w.outReader.Read(p)
+	n, e := w.outReader.Read(p)
+	// 监控tab按键，使用回调函数自动补全或展现所有相关主机
+	key, _ := bytesToKey(p, false)
+	switch key {
+	case keyTab:
+		w.tabKCount++
+		if w.tabKCount == 2 {
+			p[0] = keyEnter
+			w.tabKCount = 0
+		}
+	default:
+		w.tabKCount = 0
+	}
+	return n, e
 }
 
 func (w *WrapperSession) Close() error {

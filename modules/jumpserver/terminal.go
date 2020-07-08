@@ -108,7 +108,9 @@ func NewTerminal(c io.ReadWriter, prompt string, width, height int) *Terminal {
 }
 
 const (
+	keyCtrlC     = 3
 	keyCtrlD     = 4
+	keyTab       = '\t'
 	keyCtrlU     = 21
 	keyEnter     = '\r'
 	keyEscape    = 27
