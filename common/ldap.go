@@ -16,7 +16,7 @@ type LdapConfig struct {
 
 var LdapConn *ldap.Conn
 
-func initLdap() {
+func InitLdap() {
 	var err error
 	LdapConn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%d", Config.LdapConfig.Server, Config.LdapConfig.Port))
 	if err != nil {

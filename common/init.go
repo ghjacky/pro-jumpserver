@@ -11,5 +11,5 @@ func Init() {
 	// 初始化redis连接
 	initRedis()
 	// 初始化ldap连接
-	initLdap()
+	InitLdap()
 }
