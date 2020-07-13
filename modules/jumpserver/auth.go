@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"rsc.io/qr"
+	"sync"
 	"zeus/common"
 	"zeus/models"
 	"zeus/modules/webserver/users"
@@ -54,7 +55,6 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 	return
 }
 
-//
 // 密码认证
 func checkUserPassword(ctx ssh.Context, password string) (res bool) {
 	if len(password) != 0 {
@@ -69,11 +69,9 @@ func checkUserPassword(ctx ssh.Context, password string) (res bool) {
 			common.Log.Errorf("用户：%s 登陆失败", username)
 		}
 	}
-	common.Log.Debugln("checkUserPassword")
 	return res
 }
 
-//
 // 公钥认证
 func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
 
@@ -81,17 +79,31 @@ func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
 }
 
 // ldap 认证
+
+var lock = sync.Mutex{}
+
 func authLDAP(user models.User, pass string) (res bool) {
+	lock.Lock()
+	defer lock.Unlock()
 	defer func() {
-		_ = common.LdapConn.Bind(common.Config.LdapConfig.BindUser, common.Config.LdapConfig.Password)
+		_ = bindUserWithLdap(common.Config.LdapConfig.BindUser, common.Config.LdapConfig.Password)
 	}()
-	if err := common.LdapConn.Bind(fmt.Sprintf("%s@aibee", user.Username), pass); err != nil {
+	if err := bindUserWithLdap(fmt.Sprintf("%s@aibee", user.Username), pass); err != nil {
 		common.Log.Errorf("Authentication failure for user (%s): %s", user.Username, err.Error())
 		return false
-	} else {
-		common.Log.Infof("Login successfully: %s", user.Username)
-		return true
 	}
+	common.Log.Infof("Login successfully: %s", user.Username)
+	return true
+}
+
+func bindUserWithLdap(user, password string) error {
+	if e := common.LdapConn.Bind(user, password); e != nil {
+		common.InitLdap()
+		if err := common.LdapConn.Bind(user, password); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // google一次性验证码认证
