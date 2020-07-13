@@ -230,7 +230,9 @@ func (h *interactiveHandler) watchWinSizeChange() {
 				return
 			}
 			common.Log.Debugf("Term window size change: %d*%d", win.Height, win.Width)
-			_ = h.term.SetSize(win.Width, win.Height)
+			if err := h.term.SetSize(win.Width, win.Height); err != nil {
+				common.Log.Debugf("term resize failed: %s", err.Error())
+			}
 		}
 	}
 }
@@ -348,9 +350,17 @@ func (h *interactiveHandler) displayAllAssets() {
 
 func (h *interactiveHandler) searchAssets(pattern string) {
 	h.searchedServers = []*models.Server{}
-	for i, a := range h.servers {
-		if strings.HasPrefix(a.Hostname, pattern) || strings.HasPrefix(a.IP, pattern) || strings.HasPrefix(fmt.Sprintf("%d", i+1), pattern) {
-			h.searchedServers = append(h.searchedServers, a)
+	pi, err := strconv.Atoi(pattern)
+	if err != nil {
+		pi = -1
+	}
+	if pi > 0 && pi <= len(h.servers) {
+		h.searchedServers = append(h.searchedServers, h.servers[pi-1])
+	} else {
+		for _, a := range h.servers {
+			if strings.HasPrefix(a.IP, pattern) || strings.HasPrefix(a.Hostname, pattern) {
+				h.searchedServers = append(h.searchedServers, a)
+			}
 		}
 	}
 	// 如果只匹配到一个主机，则直接登陆，两个及以上主机则返回列表展示
@@ -405,13 +415,14 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	}
 
 	// 开始监控keyboard single character事件, 并存储，用户后续播放
+	watcherwg := &sync.WaitGroup{}
 	loginServerEventId := h.generateServerLoginEvent()
 	var kbWatcherExitChan = make(chan bool, 0)
-	go h.WatchKBEvent(kbWatcherExitChan, loginServerEventId)
+	h.WatchKBEvent(watcherwg, kbWatcherExitChan, loginServerEventId)
 
 	// 监控命令执行
 	var execWatcherExitChan = make(chan bool, 0)
-	go h.WatchExecEvent(execWatcherExitChan, loginServerEventId)
+	h.WatchExecEvent(watcherwg, execWatcherExitChan, loginServerEventId)
 
 	//session.Stdout = h.term.c
 	//session.Stdin = h.term.c
@@ -427,12 +438,15 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 		return
 	}
 	// 此处绑定并分流stdin\stdout\stderr
+	stdiowg := sync.WaitGroup{}
 	stdc := make(chan interface{}, 3)
 	go func() {
+		stdiowg.Add(1)
 		mw := io.MultiWriter(h.term.c, h.kbEventWriter)
 		for {
 			select {
 			case <-stdc:
+				stdiowg.Done()
 				return
 			default:
 				_, ie := io.Copy(mw, sout)
@@ -443,10 +457,12 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 		}
 	}()
 	go func() {
+		stdiowg.Add(1)
 		mw := io.MultiWriter(h.term.c, h.kbEventWriter)
 		for {
 			select {
 			case <-stdc:
+				stdiowg.Done()
 				return
 			default:
 				_, oe := io.Copy(mw, serr)
@@ -457,10 +473,12 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 		}
 	}()
 	go func() {
+		stdiowg.Add(1)
 		mw := io.MultiWriter(h.execEventWriter, sin)
 		for {
 			select {
 			case <-stdc:
+				stdiowg.Done()
 				return
 			default:
 				_, ee := io.Copy(mw, h.term.c)
@@ -480,8 +498,10 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 					stdc <- "sin"
 					stdc <- "serr"
 					stdc <- "sout"
+					stdiowg.Wait()
 					execWatcherExitChan <- true
 					kbWatcherExitChan <- true
+					watcherwg.Wait()
 					return
 				}
 			}
