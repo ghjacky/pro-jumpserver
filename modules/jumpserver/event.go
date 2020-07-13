@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"path"
 	"strings"
+	"sync"
 	"time"
 	"zeus/common"
 	"zeus/modules/audit"
@@ -38,7 +39,8 @@ func (h *interactiveHandler) newEvent(t string) (e audit.IEvent) {
 }
 
 // 监听命令执行事件
-func (h *interactiveHandler) WatchExecEvent(execWatcherExitChan chan bool, loginServerEventId uuid.UUID) {
+func (h *interactiveHandler) WatchExecEvent(wg *sync.WaitGroup, execWatcherExitChan chan bool, loginServerEventId uuid.UUID) {
+	wg.Add(1)
 	execOnServerEvent := h.newEvent(audit.EventTypeUserExecCommandOnServer).(*audit.ExecEvent)
 	execOnServerEvent.Timestamp = time.Now().UnixNano()
 	execOnServerEvent.ClientIP = h.userIP
@@ -57,18 +59,22 @@ func (h *interactiveHandler) WatchExecEvent(execWatcherExitChan chan bool, login
 	var watchDone = make(chan bool, 1)
 	go h.Watch(execOnServerEvent, watchDone)
 	h.mu.Unlock()
-	for {
-		select {
-		case <-execWatcherExitChan:
-			flushDone <- 1
-			watchDone <- true
-			return
+	go func() {
+		for {
+			select {
+			case <-execWatcherExitChan:
+				flushDone <- 1
+				watchDone <- true
+				wg.Done()
+				return
+			}
 		}
-	}
+	}()
 }
 
 // 监听键盘按键事件
-func (h *interactiveHandler) WatchKBEvent(kbWatcherExitChan chan bool, loginServerEventId uuid.UUID) {
+func (h *interactiveHandler) WatchKBEvent(wg *sync.WaitGroup, kbWatcherExitChan chan bool, loginServerEventId uuid.UUID) {
+	wg.Add(1)
 	// 文件事件存储器
 	fsKB := audit.NewStore(audit.StoreFile, path.Join(SessionKBEventRecordDir, strings.Join(
 		[]string{audit.EventTypeKeyBoardPress,
@@ -90,14 +96,17 @@ func (h *interactiveHandler) WatchKBEvent(kbWatcherExitChan chan bool, loginServ
 	var watchDone = make(chan bool, 1)
 	go h.Watch(kbEvent, watchDone)
 	h.mu.Unlock()
-	for {
-		select {
-		case <-kbWatcherExitChan:
-			flushDone <- 1
-			watchDone <- true
-			return
+	go func() {
+		for {
+			select {
+			case <-kbWatcherExitChan:
+				flushDone <- 1
+				watchDone <- true
+				wg.Done()
+				return
+			}
 		}
-	}
+	}()
 }
 
 // 生成jump server登陆事件
