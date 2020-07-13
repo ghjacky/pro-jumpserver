@@ -73,12 +73,12 @@ func (cw *ChanWriter) Close() (err error) {
 	return
 }
 
-var (
-	KeyAltRightInput     = []byte{27, 27, 91, 67}
-	KeyAltLeftInput      = []byte{27, 27, 91, 68}
-	KeyCommandLeftInput  = []byte{27, 98}
-	KeyCommandRightInput = []byte{27, 102}
-)
+//var (
+//	KeyAltRightInput     = []byte{27, 27, 91, 67}
+//	KeyAltLeftInput      = []byte{27, 27, 91, 68}
+//	KeyCommandLeftInput  = []byte{27, 98}
+//	KeyCommandRightInput = []byte{27, 102}
+//)
 
 func (lcw *LineChanWriter) setCursXToPos(pos int) {
 	lcw.cbHandler.term.moveCursorToPos(pos)

@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"github.com/go-redis/redis"
 	"github.com/jinzhu/gorm"
-	"io"
 	"os"
 	"zeus/common"
 )
@@ -19,7 +18,8 @@ const (
 
 // 事件存储器接口
 type IStore interface {
-	io.WriteCloser
+	Write([]byte) (int, error)
+	Close() error
 }
 
 // mysql存储器

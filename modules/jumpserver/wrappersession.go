@@ -40,7 +40,6 @@ func (w *WrapperSession) readLoop() {
 		}
 	}
 	_ = w.inWriter.Close()
-
 }
 
 func (w *WrapperSession) Read(p []byte) (int, error) {
