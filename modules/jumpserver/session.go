@@ -385,6 +385,7 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 			subSession := as.NewSession().(*ssh2.Session)
 			defer subSession.Close()
 			if subSession != nil {
+				h.sess.CurrentOn = 1
 				if err := h.Terminal(subSession); err != nil {
 					common.Log.Errorf("Couldn't connect to host: %s:%d using ssh", as.IP, as.PORT)
 					_, _ = h.term.c.Write([]byte(fmt.Sprintf("登陆主机: %s: %d失败\n", as.IP, as.PORT)))
@@ -494,6 +495,7 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 			select {
 			case done := <-sessionDone:
 				if done {
+					h.sess.CurrentOn = 0
 					common.Log.Infoln("session done")
 					stdc <- "sin"
 					stdc <- "serr"

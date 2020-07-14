@@ -9,6 +9,7 @@ import (
 )
 
 type WrapperSession struct {
+	CurrentOn uint
 	tabKCount uint
 	Sess      ssh.Session
 	inWriter  io.WriteCloser
@@ -50,10 +51,12 @@ func (w *WrapperSession) Read(p []byte) (int, error) {
 	key, _ := bytesToKey(p, false)
 	switch key {
 	case keyTab:
-		w.tabKCount++
-		if w.tabKCount == 2 {
-			p[0] = keyEnter
-			w.tabKCount = 0
+		if w.CurrentOn == 0 {
+			w.tabKCount++
+			if w.tabKCount == 2 {
+				p[0] = keyEnter
+				w.tabKCount = 0
+			}
 		}
 	default:
 		w.tabKCount = 0
@@ -111,8 +114,9 @@ func (w *WrapperSession) Pty() ssh.Pty {
 
 func NewWrapperSession(sess ssh.Session) *WrapperSession {
 	w := &WrapperSession{
-		Sess: sess,
-		mux:  new(sync.RWMutex),
+		CurrentOn: 0,
+		Sess:      sess,
+		mux:       new(sync.RWMutex),
 	}
 	w.initial()
 	return w
