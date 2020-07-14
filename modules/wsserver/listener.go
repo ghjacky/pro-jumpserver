@@ -10,6 +10,6 @@ func registerMustListener(server *socketio.Server) {
 }
 
 func registerOtherListener(server *socketio.Server) {
-	server.OnEvent("/", "playing", handlePlay)
-	server.OnEvent("/", "play_term", handleStopPlay)
+	server.OnEvent("/play", "playing", handlePlay)
+	server.OnEvent("/play", "play_term", handleStopPlay)
 }

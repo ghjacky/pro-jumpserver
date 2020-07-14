@@ -59,9 +59,9 @@ func handlePlay(conn socketio.Conn, msg string) {
 	ID := msgm["id"]
 	filename := strings.Join([]string{filePrefix, serverIP, sessionID, ID}, "_")
 	filepath := SessionKBEventRecordDir + "/" + filename
-	play(filepath, conn)
+	go play(filepath, conn)
 }
 
 func handleStopPlay(conn socketio.Conn, msg int) {
-
+	go playStop(msg)
 }

@@ -20,6 +20,8 @@ const (
 	keyDown  = 66
 )
 
+var signal = make(chan int, 0)
+
 func play(filepath string, conn socketio.Conn) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -54,13 +56,12 @@ func play(filepath string, conn socketio.Conn) {
 
 	//log.Printf("start play")
 	os.Stdout.Write([]byte("\x1bc"))
-	var signal = make(chan int, 1)
-	go func(sc <-chan int) {
+	go func() {
 		once := sync.Once{}
 		defer wg.Done()
 		//log.Printf("start scan file")
-		sleeping := 0 * time.Nanosecond
 		lastTime := int64(0)
+		sleeping := 0 * time.Nanosecond
 		var sig = make(chan int, 0)
 		conn.Emit("play_begin", 1)
 		allRecoredBytesData = append(allRecoredBytesData, models.Event{})
@@ -71,14 +72,15 @@ func play(filepath string, conn socketio.Conn) {
 				break
 			}
 			select {
-			case s := <-sc:
+			case s := <-signal:
 				switch s {
 				case 1:
-					continue
-				case 2:
 					wait(donec)
-				default:
-					break
+				case 2:
+					donec <- true
+				case 0:
+					//conn.Emit("playing", "^END^")
+					return
 				}
 			default:
 				currentTime := recordItem.Timestamp
@@ -86,15 +88,11 @@ func play(filepath string, conn socketio.Conn) {
 					lastTime = recordItem.Timestamp
 				})
 				sleeping = time.Duration(currentTime-lastTime) * time.Nanosecond
+				// 播放速度控制
 				go func() {
 					time.Sleep(sleeping / 1)
 					<-sig
 				}()
-				//if strings.Contains(string(recordItem.Data), "bash-3.2$ "){
-				//	time.Sleep(sleeping / 10 / 1)
-				//}else {
-				//	time.Sleep(sleeping / 1)
-				//}
 				sig <- 1
 				// 此处将记录的数据写入 stdout 或 其他writer
 				//_, err := os.Stdout.Write(recordItem.Data)
@@ -105,37 +103,14 @@ func play(filepath string, conn socketio.Conn) {
 				}
 			}
 		}
-	}(signal)
-
-	go func() {
-		key := make([]byte, 1)
-		signal <- 1
-		keySpaceCounter := 0
-		for {
-			_, err := os.Stdin.Read(key)
-			if err != nil {
-				return
-			}
-			switch key[0] {
-			case keyCtrlC:
-				signal <- -1
-			case keySpace:
-				keySpaceCounter += 1
-				if keySpaceCounter%2 == 0 {
-					donec <- true
-					signal <- 1
-				} else {
-					//log.Printf("Pausing ... ")
-					signal <- 2
-				}
-			default:
-				continue
-			}
-		}
 	}()
 	wg.Wait()
 }
 
 func wait(c chan bool) {
 	<-c
+}
+
+func playStop(s int) {
+	signal <- s
 }
