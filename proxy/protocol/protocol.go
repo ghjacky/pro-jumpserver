@@ -14,9 +14,10 @@ type SProtocol struct {
 	dport  []byte // 2byte, 0-65535
 	user   []byte
 	pass   []byte
-	pip    []byte // proxy ip
-	pport  []byte // proxy port
-	prport []byte
+	ppip   []byte // proxy server public ip
+	pip    []byte // proxy server private ip
+	pport  []byte // proxy server port
+	prport []byte // proxy listener random port
 	err    []byte // empty: everything is ok; not empty: error occurred
 }
 
@@ -33,8 +34,13 @@ func (proto SProtocol) Valid() (bool, error) {
 	if len(proto.dport) > 2 || len(proto.dport) <= 0 {
 		return false, fmt.Errorf("server port is big than 65535 or zero")
 	}
+
+	if len(proto.ppip) != 4 {
+		return false, fmt.Errorf("proxy public ip error")
+	}
+
 	if len(proto.pip) != 4 {
-		return false, fmt.Errorf("proxy ip error")
+		return false, fmt.Errorf("proxy private ip error")
 	}
 
 	if len(proto.pport) > 2 || len(proto.pport) <= 0 {
@@ -49,7 +55,7 @@ func (proto SProtocol) Valid() (bool, error) {
 		return false, fmt.Errorf("username cann't be empty")
 	}
 
-	if proto.Len != uint32(len(proto.t)+len(proto.dip)+len(proto.dport)+len(proto.pip)+len(proto.pport)+
+	if proto.Len != uint32(len(proto.t)+len(proto.dip)+len(proto.dport)+len(proto.ppip)+len(proto.pip)+len(proto.pport)+
 		len(proto.user)+len(proto.pass)+len(proto.prport)) {
 		return false, fmt.Errorf("message length error")
 	}
@@ -84,6 +90,10 @@ func (proto SProtocol) GetDPort() uint16 {
 	} else {
 		return (uint16(proto.dport[0]) << 8) | (uint16(proto.dport[1]) & 0xFF)
 	}
+}
+
+func (proto SProtocol) GetPPip() string {
+	return fmt.Sprintf("%d.%d.%d.%d", proto.ppip[0], proto.ppip[1], proto.ppip[2], proto.ppip[3])
 }
 
 func (proto SProtocol) GetPip() string {
@@ -139,6 +149,22 @@ func (proto *SProtocol) SetDPort(port uint16) {
 	proto.dport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
 }
 
+func (proto *SProtocol) SetPPip(ip string) error {
+	var ppip []byte
+	for _, n := range strings.Split(ip, ".") {
+		_n, err := strconv.Atoi(n)
+		if err != nil {
+			return err
+		}
+		ppip = append(ppip, uint8(_n))
+	}
+	if len(ppip) != 4 {
+		return fmt.Errorf("proxy public ip length error")
+	}
+	proto.ppip = ppip
+	return nil
+}
+
 func (proto *SProtocol) SetPip(ip string) error {
 	var pip []byte
 	for _, n := range strings.Split(ip, ".") {
@@ -149,7 +175,7 @@ func (proto *SProtocol) SetPip(ip string) error {
 		pip = append(pip, uint8(_n))
 	}
 	if len(pip) != 4 {
-		return fmt.Errorf("ip lenght error")
+		return fmt.Errorf("proxy private ip length error")
 	}
 	proto.pip = pip
 	return nil

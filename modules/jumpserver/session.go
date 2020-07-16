@@ -370,6 +370,7 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 		switch s.Type {
 		case models.ServerTypeSSH:
 			as := &assets.ASSH{}
+			as.IDC = h.selectedIDC
 			as.IP = s.IP
 			as.PORT = s.Port
 			as.USER = h.user
