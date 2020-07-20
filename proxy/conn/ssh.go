@@ -19,23 +19,23 @@ func ConnectToSshServer(cw *SConnWrapper) (net.Conn, error) {
 			return nil
 		},
 	}
-	sshClient, err := ssh.Dial("tcp", net.JoinHostPort(cw.dip, string(cw.dport)), sshClientC)
+	sshClient, err := ssh.Dial("tcp", net.JoinHostPort(cw.dip, fmt.Sprintf("%d", cw.dport)), sshClientC)
 	if err != nil {
 		common.Log.Errorf("ssh dial error: %s", err.Error())
 		return nil, err
 	}
 	randPort := randomValidPort()
 	cw.prport = randPort
-	return createHalfBehindTunnel(sshClient, net.JoinHostPort(cw.dip, string(cw.dport)))
+	return createHalfBehindTunnel(sshClient, net.JoinHostPort(cw.dip, fmt.Sprintf("%d", cw.dport)))
 }
 
 func HalfAheadTunnelListenOn(cw *SConnWrapper, ptsconn net.Conn) error {
-	l, err := net.Listen("tcp", net.JoinHostPort(cw.pip, string(cw.prport)))
+	l, err := net.Listen("tcp", net.JoinHostPort(cw.ppip, fmt.Sprintf("%d", cw.prport)))
 	if err != nil {
 		common.Log.Errorf("listener run error: %s", err.Error())
 		return err
 	}
-	SendBack(cw.conn, "", cw.prport)
+	SendBack(cw.conn, cw.ppip, "", cw.prport)
 	ctpconn, err := l.Accept()
 	if err != nil {
 		common.Log.Errorf("listener connect error: %s", err.Error())
@@ -91,7 +91,7 @@ func randomValidPort() uint16 {
 }
 
 func checkIfPortAvailable(port uint16) bool {
-	l, err := net.Listen("tcp", fmt.Sprintf(":%s", string(port)))
+	l, err := net.Listen("tcp", net.JoinHostPort("0.0.0.0", fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false
 	}

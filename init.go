@@ -13,7 +13,7 @@ import (
 func initAll() {
 	// 初始化程序配置，mysql、redis连接以及日志配置等
 	common.Init()
-	common.Mysql.AutoMigrate(&models.Event{}, &models.User{}, &models.Server{}, &models.Asset{})
+	common.Mysql.AutoMigrate(&models.Event{}, &models.User{}, &models.Server{}, &models.Asset{}, &models.SIDC{}, &models.SProxy{})
 	router.Init()
 }
 

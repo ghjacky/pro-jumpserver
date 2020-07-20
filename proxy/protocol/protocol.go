@@ -8,17 +8,17 @@ import (
 
 type SProtocol struct {
 	Header map[string]interface{}
-	Len    uint32 // len(dip) + len(dport) + + len(t) + len(pip) + len(pport)
-	t      []byte // 1byte, 0: req; 1:resp
-	dip    []byte // 4byte, 0-255 for every node
-	dport  []byte // 2byte, 0-65535
-	user   []byte
-	pass   []byte
-	ppip   []byte // proxy server public ip
-	pip    []byte // proxy server private ip
-	pport  []byte // proxy server port
-	prport []byte // proxy listener random port
-	err    []byte // empty: everything is ok; not empty: error occurred
+	//Len    uint32 // len(dip) + len(dport) + + len(t) + len(pip) + len(pport)...
+	T      []byte `json:"t"`     // 1byte, 0: req; 1:resp
+	Dip    []byte `json:"dip"`   // 4byte, 0-255 for every node
+	Dport  []byte `json:"dport"` // 2byte, 0-65535
+	User   []byte `json:"user"`
+	Pass   []byte `json:"pass"`
+	Ppip   []byte `json:"ppip"`   // proxy server public ip
+	Pip    []byte `json:"pip"`    // proxy server private ip
+	Pport  []byte `json:"pport"`  // proxy server port
+	Prport []byte `json:"prport"` // proxy listener random port
+	Err    []byte `json:"err"`    // empty: everything is ok; not empty: error occurred
 }
 
 func NewMessage() *SProtocol {
@@ -27,106 +27,106 @@ func NewMessage() *SProtocol {
 
 func (proto SProtocol) Valid() (bool, error) {
 
-	if len(proto.dip) != 4 {
+	if len(proto.Dip) != 4 {
 		return false, fmt.Errorf("server ip error")
 	}
 
-	if len(proto.dport) > 2 || len(proto.dport) <= 0 {
+	if len(proto.Dport) > 2 || len(proto.Dport) <= 0 {
 		return false, fmt.Errorf("server port is big than 65535 or zero")
 	}
 
-	if len(proto.ppip) != 4 {
+	if len(proto.Ppip) != 4 {
 		return false, fmt.Errorf("proxy public ip error")
 	}
 
-	if len(proto.pip) != 4 {
+	if len(proto.Pip) != 4 {
 		return false, fmt.Errorf("proxy private ip error")
 	}
 
-	if len(proto.pport) > 2 || len(proto.pport) <= 0 {
+	if len(proto.Pport) > 2 || len(proto.Pport) <= 0 {
 		return false, fmt.Errorf("proxy port is big than 65535 or zero")
 	}
 
-	if len(proto.t) != 1 {
+	if len(proto.T) != 1 {
 		return false, fmt.Errorf("type length error")
 	}
 
-	if len(proto.user) <= 0 {
+	if len(proto.User) <= 0 {
 		return false, fmt.Errorf("username cann't be empty")
 	}
 
-	if proto.Len != uint32(len(proto.t)+len(proto.dip)+len(proto.dport)+len(proto.ppip)+len(proto.pip)+len(proto.pport)+
-		len(proto.user)+len(proto.pass)+len(proto.prport)) {
-		return false, fmt.Errorf("message length error")
-	}
+	//if proto.Len != uint32(len(proto.t)+len(proto.dip)+len(proto.dport)+len(proto.ppip)+len(proto.pip)+len(proto.pport)+
+	//	len(proto.user)+len(proto.pass)+len(proto.prport)) {
+	//	return false, fmt.Errorf("message length error")
+	//}
 
 	return true, nil
 }
 
 func (proto SProtocol) IsReq() bool {
-	return proto.t[0] == uint8(0)
+	return proto.T[0] == uint8(0)
 }
 
 func (proto SProtocol) IsResp() bool {
-	return proto.t[0] == uint8(1)
+	return proto.T[0] == uint8(1)
 }
 
 // Getters
 func (proto *SProtocol) GetUser() string {
-	return string(proto.user)
+	return string(proto.User)
 }
 
 func (proto *SProtocol) GetPass() string {
-	return string(proto.pass)
+	return string(proto.Pass)
 }
 
 func (proto SProtocol) GetDip() string {
-	return fmt.Sprintf("%d.%d.%d.%d", proto.dip[0], proto.dip[1], proto.dip[2], proto.dip[3])
+	return fmt.Sprintf("%d.%d.%d.%d", proto.Dip[0], proto.Dip[1], proto.Dip[2], proto.Dip[3])
 }
 
 func (proto SProtocol) GetDPort() uint16 {
-	if len(proto.dport) == 1 {
-		return uint16(proto.dport[0])
+	if len(proto.Dport) == 1 {
+		return uint16(proto.Dport[0])
 	} else {
-		return (uint16(proto.dport[0]) << 8) | (uint16(proto.dport[1]) & 0xFF)
+		return (uint16(proto.Dport[0]) << 8) | (uint16(proto.Dport[1]) & 0xFF)
 	}
 }
 
 func (proto SProtocol) GetPPip() string {
-	return fmt.Sprintf("%d.%d.%d.%d", proto.ppip[0], proto.ppip[1], proto.ppip[2], proto.ppip[3])
+	return fmt.Sprintf("%d.%d.%d.%d", proto.Ppip[0], proto.Ppip[1], proto.Ppip[2], proto.Ppip[3])
 }
 
 func (proto SProtocol) GetPip() string {
-	return fmt.Sprintf("%d.%d.%d.%d", proto.pip[0], proto.pip[1], proto.pip[2], proto.pip[3])
+	return fmt.Sprintf("%d.%d.%d.%d", proto.Pip[0], proto.Pip[1], proto.Pip[2], proto.Pip[3])
 }
 
 func (proto SProtocol) GetPPort() uint16 {
-	if len(proto.pport) == 1 {
-		return uint16(proto.pport[0])
+	if len(proto.Pport) == 1 {
+		return uint16(proto.Pport[0])
 	} else {
-		return (uint16(proto.pport[0]) << 8) | (uint16(proto.pport[1]) & 0xFF)
+		return (uint16(proto.Pport[0]) << 8) | (uint16(proto.Pport[1]) & 0xFF)
 	}
 }
 
 func (proto SProtocol) GetPRPort() uint16 {
-	if len(proto.prport) == 1 {
-		return uint16(proto.prport[0])
+	if len(proto.Prport) == 1 {
+		return uint16(proto.Prport[0])
 	} else {
-		return (uint16(proto.prport[0]) << 8) | (uint16(proto.prport[1]) & 0xFF)
+		return (uint16(proto.Prport[0]) << 8) | (uint16(proto.Prport[1]) & 0xFF)
 	}
 }
 
 func (proto SProtocol) GetErr() error {
-	if len(proto.err) == 0 {
+	if len(proto.Err) == 0 {
 		return nil
 	} else {
-		return fmt.Errorf(string(proto.err))
+		return fmt.Errorf(string(proto.Err))
 	}
 }
 
 // Setters
 func (proto *SProtocol) SetT(t uint8) {
-	proto.t = []byte{t}
+	proto.T = []byte{t}
 }
 
 func (proto *SProtocol) SetDip(ip string) error {
@@ -141,12 +141,12 @@ func (proto *SProtocol) SetDip(ip string) error {
 	if len(dip) != 4 {
 		return fmt.Errorf("ip lenght error")
 	}
-	proto.dip = dip
+	proto.Dip = dip
 	return nil
 }
 
 func (proto *SProtocol) SetDPort(port uint16) {
-	proto.dport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
+	proto.Dport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
 }
 
 func (proto *SProtocol) SetPPip(ip string) error {
@@ -161,7 +161,7 @@ func (proto *SProtocol) SetPPip(ip string) error {
 	if len(ppip) != 4 {
 		return fmt.Errorf("proxy public ip length error")
 	}
-	proto.ppip = ppip
+	proto.Ppip = ppip
 	return nil
 }
 
@@ -177,18 +177,26 @@ func (proto *SProtocol) SetPip(ip string) error {
 	if len(pip) != 4 {
 		return fmt.Errorf("proxy private ip length error")
 	}
-	proto.pip = pip
+	proto.Pip = pip
 	return nil
 }
 
 func (proto *SProtocol) SetPPort(port uint16) {
-	proto.pport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
+	proto.Pport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
 }
 
 func (proto *SProtocol) SetPRPort(port uint16) {
-	proto.prport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
+	proto.Prport = []byte{uint8(port >> 8), uint8(port & 0xFF)}
+}
+
+func (proto *SProtocol) SetUser(user string) {
+	proto.User = []byte(user)
+}
+
+func (proto *SProtocol) SetPass(pass string) {
+	proto.Pass = []byte(pass)
 }
 
 func (proto *SProtocol) SetErr(err string) {
-	proto.err = []byte(err)
+	proto.Err = []byte(err)
 }

@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"time"
 	"zeus/proxy/common"
 	"zeus/proxy/protocol"
+	"zeus/utils"
 )
 
 type SConnWrapper struct {
 	conn   net.Conn
-	pip    string
+	ppip   string // public ip of proxy
 	prport uint16 // 此处为random port
 	user   string
 	pass   string
@@ -32,14 +34,37 @@ func HandleClientConn(c net.Conn) {
 	CPool.Put(c)
 	defer CPool.WipeOut(c)
 	cw := newConnWrapper(c)
-	buffer := make([]byte, 1024)
-	if _, err := c.Read(buffer); err != nil {
-		SendBack(c, fmt.Sprintf("socket read error: %s", err.Error()), 0)
+	var clientDataCh = utils.NewTimeoutChan(make(chan []byte, 0))
+	clientDataCh.SetTimeout(15 * time.Second)
+	go func() {
+		buf := make([]byte, 0)
+		tbf := make([]byte, 256)
+		for {
+			n, err := c.Read(tbf)
+			if err != nil {
+				SendBack(c, cw.ppip, fmt.Sprintf("socket read error: %s", err.Error()), 0)
+				break
+			}
+			buf = append(buf, tbf[:n]...)
+			if n < 256 {
+				if timeout := clientDataCh.WriteWithTimeout(buf); timeout {
+					common.Log.Errorln("sent to client timeout")
+					return
+				}
+				buf = make([]byte, 0)
+				tbf = make([]byte, 256)
+			}
+		}
+	}()
+	buffer, timeout := clientDataCh.ReadWithTimeout()
+	if timeout {
+		common.Log.Errorln("read from client timeout")
 		return
 	}
+	common.Log.Infof("proxy received data: %s", string(buffer))
 	var req = protocol.NewMessage()
-	if err := json.Unmarshal(buffer, &req); err != nil {
-		SendBack(c, fmt.Sprintf("data unmarshal error: %s", err.Error()), 0)
+	if err := json.Unmarshal(buffer, req); err != nil {
+		SendBack(c, cw.ppip, fmt.Sprintf("data unmarshal error: %s", err.Error()), 0)
 		return
 	}
 	if ok, err := req.Valid(); ok && req.IsReq() {
@@ -47,32 +72,37 @@ func HandleClientConn(c net.Conn) {
 		cw.dport = req.GetDPort()
 		cw.user = req.GetUser()
 		cw.pass = req.GetPass()
-		cw.pip = req.GetPip()
+		cw.ppip = req.GetPPip()
 		ptsconn, e := ConnectToSshServer(cw)
 		if e != nil {
-			SendBack(c, fmt.Sprintf("failed to connect to server: %s", e.Error()), 0)
+			SendBack(c, cw.ppip, fmt.Sprintf("failed to connect to server: %s", e.Error()), 0)
 			return
 		}
 		if e := HalfAheadTunnelListenOn(cw, ptsconn); e != nil {
-			SendBack(c, fmt.Sprintf("tunnel listener run error: %s", e.Error()), 0)
+			SendBack(c, cw.ppip, fmt.Sprintf("tunnel listener run error: %s", e.Error()), 0)
 			return
 		}
 	} else if err != nil {
-		SendBack(c, fmt.Sprintf("request message error: %s", err.Error()), 0)
+		SendBack(c, cw.ppip, fmt.Sprintf("request message error: %s", err.Error()), 0)
 		return
 	}
 }
 
-func SendBack(c net.Conn, err string, prport uint16) {
+func SendBack(c net.Conn, ppip, err string, prport uint16) {
 	resp := protocol.NewMessage()
 	resp.SetT(1)
+	if err := resp.SetPPip(ppip); err != nil {
+		h, _, _ := net.SplitHostPort(c.LocalAddr().String())
+		_ = resp.SetPPip(h)
+	}
 	resp.SetErr(err)
 	resp.SetPRPort(prport)
-	data, e := json.Marshal(resp)
+	data, e := json.Marshal(*resp)
 	if e != nil {
 		common.Log.Errorf("response data marshal eror: %s", e.Error())
 		return
 	}
+	common.Log.Debugf("send response to client: %s", string(data))
 	_, e = c.Write(data)
 	if e != nil {
 		common.Log.Errorf("data send back error: %s", e.Error())

@@ -7,7 +7,8 @@ import (
 
 type ACommon struct {
 	IP   string `json:"ip"`
-	PORT int16  `json:"port"`
+	PORT uint16 `json:"port"`
+	IDC  string `json:"idc"`
 }
 
 type IAsset interface {

@@ -11,7 +11,7 @@ type Spool struct {
 }
 
 func NewConnPool() *Spool {
-	return &Spool{}
+	return &Spool{Pool: map[string]net.Conn{}}
 }
 
 func (p *Spool) Put(c net.Conn) {
@@ -47,8 +47,6 @@ func (p *Spool) Len() int {
 }
 
 func (p *Spool) WipeOut(c net.Conn) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	p.Remove(c.RemoteAddr().String())
 	c.Close()
 }

@@ -37,7 +37,7 @@ type Server struct {
 	Hostname  string     `gorm:"type:varchar(64); not null" json:"hostname"`
 	IP        string     `gorm:"primary_key;type:varchar(32); not null" json:"ip"`
 	IDC       string     `gorm:"type:varchar(8); not null" json:"idc"`
-	Port      int16      `gorm:"not null" json:"port"`
+	Port      uint16     `gorm:"not null" json:"port"`
 }
 
 type Servers []*Server
