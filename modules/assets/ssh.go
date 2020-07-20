@@ -34,15 +34,6 @@ func (a *ASSH) Connect() (c interface{}) {
 	var port = a.PORT
 	var idc = models.SIDC{Name: a.IDC}
 	// 如果需要代理，连接代理控制端口发送必要信息，并通过返回的信息连接映射端口
-	// -- temp test code
-	//var p = models.SProxy{
-	//	IDC:   "北京",
-	//	PIP:   []byte{192, 168, 72, 138},
-	//	PPIP:  []byte{127, 0, 0, 1},
-	//	PPORT: 2000,
-	//}
-	//p.Add()
-	// --
 	if need, err := idc.NeedProxy(); need && err == nil {
 		ppip := fmt.Sprintf("%d.%d.%d.%d", idc.Proxy.PPIP[0], idc.Proxy.PPIP[1], idc.Proxy.PPIP[2], idc.Proxy.PPIP[3])
 		pip := fmt.Sprintf("%d.%d.%d.%d", idc.Proxy.PIP[0], idc.Proxy.PIP[1], idc.Proxy.PIP[2], idc.Proxy.PIP[3])
@@ -59,7 +50,11 @@ func (a *ASSH) Connect() (c interface{}) {
 		common.Log.Debugf("proxy request: %#v", *req)
 		var respChan = utils.NewTimeoutChan(make(chan []byte, 0))
 		respChan.SetTimeout(15 * time.Second)
-		proxy := connectToProxy(pip, pport)
+		proxy := connectToProxy(ppip, pport)
+		if proxy == nil {
+			common.Log.Errorf("connect to proxy error")
+			return
+		}
 		defer proxy.Close()
 		resp, err := a.useProxy(*req, proxy, respChan)
 		if err != nil {
