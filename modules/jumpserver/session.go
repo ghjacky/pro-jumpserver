@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"zeus/common"
 	"zeus/models"
 	"zeus/modules/assets"
@@ -384,6 +383,7 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 			as = ias.(*assets.ASSH)
 			// 建立一个到远端主机到ssh session
 			subSession := as.NewSession().(*ssh2.Session)
+			defer as.Client.Close()
 			defer subSession.Close()
 			if subSession != nil {
 				h.sess.CurrentOn = 1
@@ -406,9 +406,8 @@ func (h *interactiveHandler) displaySearchedServers() {
 	}
 }
 
-var sessionDone = make(chan bool, 0)
-
 func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
+	var sessionDone = make(chan bool, 0)
 	modes := ssh2.TerminalModes{
 		ssh2.ECHO:          1,
 		ssh2.ECHOCTL:       0,
@@ -529,23 +528,6 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	// session退出后通过发送退出信号，关闭相应goroutine和io等
 	sessionDone <- true
 	return
-}
-
-func ExitSessionBgTask(millisecond time.Duration) {
-	var done chan interface{}
-	go func() {
-		time.Sleep(millisecond * time.Millisecond)
-		done <- 1
-	}()
-	for {
-		select {
-		case <-done:
-			break
-		default:
-			sessionDone <- true
-			break
-		}
-	}
 }
 
 //type ChanBuffer chan []byte

@@ -6,7 +6,8 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"zeus/common"
+	"time"
+	"zeus/proxy/common"
 )
 
 func ConnectToSshServer(cw *SConnWrapper) (net.Conn, error) {
@@ -30,7 +31,7 @@ func ConnectToSshServer(cw *SConnWrapper) (net.Conn, error) {
 }
 
 func HalfAheadTunnelListenOn(cw *SConnWrapper, ptsconn net.Conn) error {
-	l, err := net.Listen("tcp", net.JoinHostPort(cw.ppip, fmt.Sprintf("%d", cw.prport)))
+	l, err := net.Listen("tcp", net.JoinHostPort("", fmt.Sprintf("%d", cw.prport)))
 	if err != nil {
 		common.Log.Errorf("listener run error: %s", err.Error())
 		return err
@@ -41,7 +42,7 @@ func HalfAheadTunnelListenOn(cw *SConnWrapper, ptsconn net.Conn) error {
 		common.Log.Errorf("listener connect error: %s", err.Error())
 		return err
 	}
-	return TunnelConnect(ctpconn, ptsconn)
+	return TunnelConnect(l, ctpconn, ptsconn)
 }
 
 func createHalfBehindTunnel(sc *ssh.Client, remote string) (net.Conn, error) {
@@ -53,14 +54,18 @@ func createHalfBehindTunnel(sc *ssh.Client, remote string) (net.Conn, error) {
 	return ptsconn, nil
 }
 
-func TunnelConnect(src, dest net.Conn) error {
+func TunnelConnect(listener net.Listener, src, dest net.Conn) error {
+	defer listener.Close()
 	defer tunnelWipeout(src, dest)
-	var tunnelDone = make(chan error, 1)
+	var tunnelDone = make(chan error, 2)
 	go func() {
 		if _, err := io.Copy(dest, src); err != nil {
 			common.Log.Errorf("io copy error: %s", err.Error())
 			tunnelDone <- fmt.Errorf("tunnel done")
 			return
+		} else {
+			common.Log.Debugf("io copy done")
+			tunnelDone <- fmt.Errorf("tunnel done")
 		}
 	}()
 	go func() {
@@ -68,15 +73,37 @@ func TunnelConnect(src, dest net.Conn) error {
 			common.Log.Errorf("io copy error: %s", err.Error())
 			tunnelDone <- fmt.Errorf("tunnel done")
 			return
+		} else {
+			common.Log.Debugf("io copy done")
+			tunnelDone <- fmt.Errorf("tunnel done")
 		}
 	}()
 	<-tunnelDone
+	common.Log.Infof("tunnel done")
 	return nil
+}
+
+func isConnClosed(conn net.Conn) bool {
+	one := make([]byte, 1)
+	conn.SetReadDeadline(time.Now())
+	if _, err := conn.Read(one); err == io.EOF {
+		common.Log.Debugf("detect connection: %s <-> %s closed", conn.LocalAddr().String(), conn.RemoteAddr().String())
+		return true
+	} else if err == nil {
+		conn.SetReadDeadline(time.Time{})
+		return false
+	} else if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
+		common.Log.Infof("detect connection: %s <-> %s timeout error", conn.LocalAddr().String(), conn.RemoteAddr().String())
+		return true
+	}
+	return false
 }
 
 func tunnelWipeout(src, dest net.Conn) {
 	_ = src.Close()
 	_ = dest.Close()
+	src = nil
+	dest = nil
 }
 
 func randomValidPort() uint16 {

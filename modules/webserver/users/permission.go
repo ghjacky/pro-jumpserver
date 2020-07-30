@@ -62,13 +62,13 @@ func FilterPermissionServersByIDC(user *models.User, idc string) (ss models.Serv
 	}
 	////// 测试数据
 	s := models.Server{}
-	s.IP = "172.16.244.28"
+	s.IP = "192.168.32.7"
 	s.Hostname = "dev_server_01"
-	s.IDC = "天津"
+	s.IDC = "北京"
 	s.Type = "ssh"
 	s.Port = 22
 	s1 := models.Server{}
-	s1.IP = "172.16.244.29"
+	s1.IP = "172.16.244.28"
 	s1.Hostname = "dev_server_02"
 	s1.IDC = "天津"
 	s1.Type = "ssh"
