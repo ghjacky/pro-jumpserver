@@ -2,6 +2,7 @@ package utils
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -133,4 +134,33 @@ func TrimWordCutSetChar(s string) string {
 func IsStringContainsWordCutSetChar(s string) bool {
 	s = TrimWordCutSetChar(s)
 	return strings.Contains(s, " ") // || 此处添加其他字符contains判断
+}
+
+func ByteArrToStringForIP(ba []byte) string {
+	var s []string
+	for _, i := range ba {
+		s = append(s, fmt.Sprintf("%d", i))
+	}
+	return strings.Join(s, ".")
+}
+
+func StructToMap(v interface{}) (interface{}, error) {
+	var result interface{}
+	var src interface{}
+	_src, ok := v.([]interface{})
+	if ok {
+		src = _src
+		result = []map[string]interface{}{}
+	} else {
+		src = v
+		result = map[string]interface{}{}
+	}
+	bd, err := json.Marshal(src)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(bd, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

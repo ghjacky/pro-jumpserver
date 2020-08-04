@@ -17,6 +17,7 @@ func idcRouter(r *gin.Engine) {
 	{
 		proxyR.GET("", controllers.FetchAllProxies)
 		proxyR.POST("", controllers.AddProxy)
+		proxyR.PUT("", controllers.UpdateProxy)
 		proxyR.DELETE("/:id", controllers.DeleteProxy)
 	}
 }

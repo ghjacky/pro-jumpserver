@@ -13,7 +13,7 @@ type SIDC struct {
 type SIDCS []*SIDC
 type SProxy struct {
 	gorm.Model
-	IDC   string `json:"idc" gorm:"column:idc"`
+	IDC   string `json:"idc" gorm:"column:idc;not null;unique;unique_index:p_ip_port"`
 	PPIP  []byte `json:"ppip" gorm:"column:ppip;not null;unique_index:p_ip_port"`
 	PIP   []byte `json:"pip" gorm:"column:pip;not null;unique_index:p_ip_port"`
 	PPORT uint16 `json:"pport" gorm:"column:pport;not null;unique_index:p_ip_port"`
@@ -54,8 +54,18 @@ func (p *SProxy) Add() error {
 	return common.Mysql.Debug().Create(p).Error
 }
 
+func (p *SProxy) Update() error {
+	if len(p.PPIP) != 4 || len(p.PIP) != 4 {
+		return fmt.Errorf("proxy ip length error")
+	}
+	if p.PPORT <= 0 || p.PPORT > 65535 {
+		return fmt.Errorf("proxy port out of bound")
+	}
+	return common.Mysql.Debug().Unscoped().Save(p).Error
+}
+
 func (p *SProxy) Delete() error {
-	return common.Mysql.Debug().Delete(p).Error
+	return common.Mysql.Debug().Unscoped().Delete(p).Error
 }
 
 func (ps *SProxies) FetchAll() error {

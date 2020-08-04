@@ -18,4 +18,5 @@ func Register() {
 	permissionRouter(R)
 	userRouter(R)
 	eventRouter(R)
+	idcRouter(R)
 }
