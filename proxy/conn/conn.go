@@ -61,9 +61,9 @@ func HandleClientConn(c net.Conn) {
 		common.Log.Errorln("read from client timeout")
 		return
 	}
-	common.Log.Infof("proxy received data: %s", string(buffer))
+	dd := []byte(utils.Dec(string(buffer)))
 	var req = protocol.NewMessage()
-	if err := json.Unmarshal(buffer, req); err != nil {
+	if err := json.Unmarshal(dd, req); err != nil {
 		SendBack(c, cw.ppip, fmt.Sprintf("data unmarshal error: %s", err.Error()), 0)
 		return
 	}

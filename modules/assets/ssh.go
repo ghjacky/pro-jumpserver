@@ -118,15 +118,16 @@ func connectToProxy(ip string, port uint16) net.Conn {
 
 func sendToProxy(c net.Conn, req protocol.SProtocol) error {
 	d, err := json.Marshal(req)
+	ed := []byte(utils.Enc(string(d)))
 	if err != nil {
 		common.Log.Errorf("req marshal error: %s", err.Error())
 		return err
 	}
-	if _, err := c.Write(d); err != nil {
+	if _, err := c.Write(ed); err != nil {
 		common.Log.Errorf("failed to send req to proxy: %s", err.Error())
 		return err
 	}
-	common.Log.Debugf("client send data to proxy: %s", string(d))
+	common.Log.Debugln("client send data to proxy successfully")
 	return nil
 }
 
