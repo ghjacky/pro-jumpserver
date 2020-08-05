@@ -5,7 +5,7 @@ import (
 	"time"
 	"zeus/common"
 	"zeus/modules/jumpserver"
-	"zeus/modules/webserver/users"
+	"zeus/modules/webserver/user"
 	"zeus/modules/wsserver"
 	"zeus/router"
 )
@@ -14,7 +14,7 @@ func bgJobs() {
 	go func() {
 		for {
 			time.Sleep(5 * time.Minute)
-			if err := users.FetchUserFromLDAP(); err != nil {
+			if err := user.FetchUserFromLDAP(); err != nil {
 				common.Log.Errorf("从ldap同步用户数据出错：%s", err.Error())
 			}
 		}

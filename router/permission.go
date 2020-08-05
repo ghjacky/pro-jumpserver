@@ -8,8 +8,10 @@ import (
 func permissionRouter(r *gin.Engine) {
 	permR := r.Group("/api/v1/perms")
 	{
-		permR.GET("/:username", controllers.GetUserPermAssets)
-		permR.POST("/:username", controllers.AddUserPermAssets)
-		permR.PUT("", controllers.SetUserPermAssets)
+		permR.GET("", controllers.FetchPermissions)
+		permR.GET("/:username", controllers.GetUserPermissions)
+		permR.POST("/:username", controllers.AddUserPermissions)
+		permR.PUT("", controllers.SetUserPermissions)
+		permR.DELETE("/:id", controllers.DeletePermission)
 	}
 }

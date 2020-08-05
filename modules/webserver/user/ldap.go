@@ -1,4 +1,4 @@
-package users
+package user
 
 import (
 	"github.com/go-ldap/ldap/v3"

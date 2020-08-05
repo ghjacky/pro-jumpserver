@@ -12,7 +12,7 @@ import (
 	"zeus/common"
 	"zeus/models"
 	"zeus/modules/assets"
-	"zeus/modules/webserver/users"
+	"zeus/modules/webserver/permission"
 )
 
 const (
@@ -111,7 +111,7 @@ func sessionHandler(session ssh.Session) {
 		// 首先创建相关session事件存储目录(文件）
 
 		handler := newInteractiveHandler(session, session.User())
-		go handler.fetchPermissionAssets()
+		go handler.fetchPermedServers()
 		// 初始化handler
 		handler.Initial(session)
 		// session退出前关闭相应缓冲区
@@ -336,9 +336,9 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 	}
 }
 
-func (h *interactiveHandler) fetchPermissionAssets() {
+func (h *interactiveHandler) fetchPermedServers() {
 	user := models.User{Username: h.user}
-	h.servers = users.FilterPermissionServersByIDC(&user, h.selectedIDC)
+	h.servers = permission.FilterPermissionServersByIDC(&user, h.selectedIDC)
 }
 
 func (h *interactiveHandler) displayAllAssets() {

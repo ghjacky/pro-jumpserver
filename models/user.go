@@ -7,13 +7,13 @@ import (
 )
 
 type User struct {
-	Username string `gorm:"primary_key; not null" json:"username"`
-	Nickname string `json:"nickname"`
-	Email    string `json:"email"`
-	Valid    string `json:"valid" gorm:"default:'否'"`   // 账户可用状态：是、否
-	Active   string `json:"active" gorm:"default:'下线'"` // 账户登陆状态：在线、下线
-	Assets   Assets `gorm:"many2many:user_asset" json:"asset"`
-	Events   Events `json:"events" gorm:"foreignkey:Username"`
+	Username    string      `gorm:"primary_key; not null" json:"username"`
+	Nickname    string      `json:"nickname"`
+	Email       string      `json:"email"`
+	Valid       string      `json:"valid" gorm:"default:'否'"`   // 账户可用状态：是、否
+	Active      string      `json:"active" gorm:"default:'下线'"` // 账户登陆状态：在线、下线
+	Permissions Permissions `gorm:"foreignkey:Username" json:"permissions"`
+	Events      Events      `json:"events" gorm:"foreignkey:Username"`
 }
 
 type Users []*User
@@ -59,9 +59,7 @@ func (u *User) GetInfo(...interface{}) (err error) {
 func (u *User) Update() (err error) {
 	return common.Mysql.Debug().Save(u).Error
 }
-func (u *User) ReplaceAssets() error {
-	return common.Mysql.Model(u).Association("Assets").Replace(u.Assets).Error
-}
+
 func (u *User) Patch(...interface{}) (err error) {
 	return
 }

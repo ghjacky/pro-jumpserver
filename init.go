@@ -16,8 +16,8 @@ func initAll() {
 		&models.Event{},
 		&models.User{},
 		&models.Server{},
-		&models.Asset{},
-		&models.SIDC{},
+		&models.Permission{},
+		//&models.SIDC{},
 		&models.SProxy{})
 	// -- temp test code
 	var p = models.SProxy{

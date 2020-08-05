@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"zeus/models"
-	"zeus/modules/webserver/events"
+	"zeus/modules/webserver/event"
 )
 
 func FetchEvents(ctx *gin.Context) {
@@ -13,7 +13,7 @@ func FetchEvents(ctx *gin.Context) {
 		ctx.JSON(200, newHttpResp(100001, fmt.Sprintf("参数错误: %#v", query), nil))
 		return
 	}
-	total, evs, err := events.FetchEventList(query)
+	total, evs, err := event.FetchEventList(query)
 	if err != nil {
 		ctx.JSON(200, newHttpResp(100302, fmt.Sprintf("获取事件列表出错：%s", err.Error()), nil))
 		return

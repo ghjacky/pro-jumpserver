@@ -12,7 +12,7 @@ import (
 	"sync"
 	"zeus/common"
 	"zeus/models"
-	"zeus/modules/webserver/users"
+	"zeus/modules/webserver/user"
 )
 
 const (
@@ -36,13 +36,13 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 	}
 	password := answers[0]
 	// 首先检测账户是否可用
-	user := models.User{Username: username}
-	if !users.IsValid(&user) {
+	u := models.User{Username: username}
+	if !user.IsValid(&u) {
 		return false
 	}
 	//code := answers[1]
 	// GAC + LDAP认证
-	res = authLDAP(user, password)
+	res = authLDAP(u, password)
 	//res = authGAC(code) && authLDAP(username, password)
 	if res {
 		// 登陆成功，将用户信息写入context
@@ -82,17 +82,17 @@ func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
 
 var lock = sync.Mutex{}
 
-func authLDAP(user models.User, pass string) (res bool) {
+func authLDAP(u models.User, pass string) (res bool) {
 	lock.Lock()
 	defer lock.Unlock()
 	defer func() {
 		_ = bindUserWithLdap(common.Config.LdapConfig.BindUser, common.Config.LdapConfig.Password)
 	}()
-	if err := bindUserWithLdap(fmt.Sprintf("%s@aibee", user.Username), pass); err != nil {
-		common.Log.Errorf("Authentication failure for user (%s): %s", user.Username, err.Error())
+	if err := bindUserWithLdap(fmt.Sprintf("%s@aibee", u.Username), pass); err != nil {
+		common.Log.Errorf("Authentication failure for user (%s): %s", u.Username, err.Error())
 		return false
 	}
-	common.Log.Infof("Login successfully: %s", user.Username)
+	common.Log.Infof("Login successfully: %s", u.Username)
 	return true
 }
 
