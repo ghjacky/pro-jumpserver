@@ -20,6 +20,8 @@ type ASSH struct {
 	Client *ssh.Client `json:"client"`
 }
 
+const SSHTIMEOUT = 15 * time.Second
+
 // Connect 远端主机ssh连接；首先判断资产所属IDC，进一步判断通往此IDC是否设置有相应的代理，如果有设置代理，则需要连接代理，
 // 并进而通过代理将ssh连接转发到远端主机。
 func (a *ASSH) Connect() (c interface{}) {
@@ -29,6 +31,7 @@ func (a *ASSH) Connect() (c interface{}) {
 			ssh.Password(a.PASS),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         SSHTIMEOUT,
 	}
 	var ip = a.IP
 	var port = a.PORT

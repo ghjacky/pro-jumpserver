@@ -33,6 +33,7 @@ type interactiveHandler struct {
 	//nodeDataLoaded  chan struct{}
 	//assetDataLoaded chan struct{}
 	servers         models.Servers
+	serversInIdc    models.Servers
 	searchedServers models.Servers
 	Banner
 	selectedIDC     string
@@ -267,6 +268,7 @@ func (h *interactiveHandler) selectIDC(sessionExitSignal chan bool) {
 			idcID, err := strconv.Atoi(line)
 			if err == nil && idcID >= 0 && idcID < len(IDCs) {
 				h.selectedIDC = IDCs[idcID]
+				h.filterServersByIDC()
 				h.Banner.setMainMenu(IDCs[idcID])
 				h.displayBanner()
 				h.Dispatch(sessionExitSignal)
@@ -338,11 +340,24 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 
 func (h *interactiveHandler) fetchPermedServers() {
 	user := models.User{Username: h.user}
-	h.servers = permission.FilterPermissionServersByIDC(&user, h.selectedIDC)
+	h.servers = permission.FetchPermissionServers(&user)
+}
+
+func (h *interactiveHandler) filterServersByIDC() {
+	if strings.EqualFold(h.selectedIDC, "全部") || strings.EqualFold(h.selectedIDC, "ALL") {
+		h.serversInIdc = h.servers
+		return
+	}
+	h.serversInIdc = models.Servers{}
+	for _, server := range h.servers {
+		if strings.EqualFold(server.IDC, h.selectedIDC) {
+			h.serversInIdc = append(h.serversInIdc, server)
+		}
+	}
 }
 
 func (h *interactiveHandler) displayAllAssets() {
-	for i, s := range h.servers {
+	for i, s := range h.serversInIdc {
 		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", i+1, s.Hostname, s.IP, s.IDC)))
 	}
 }
@@ -353,10 +368,10 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 	if err != nil {
 		pi = -1
 	}
-	if pi > 0 && pi <= len(h.servers) {
-		h.searchedServers = append(h.searchedServers, h.servers[pi-1])
+	if pi > 0 && pi <= len(h.serversInIdc) {
+		h.searchedServers = append(h.searchedServers, h.serversInIdc[pi-1])
 	} else {
-		for _, a := range h.servers {
+		for _, a := range h.serversInIdc {
 			if strings.HasPrefix(a.IP, pattern) || strings.HasPrefix(a.Hostname, pattern) {
 				h.searchedServers = append(h.searchedServers, a)
 			}

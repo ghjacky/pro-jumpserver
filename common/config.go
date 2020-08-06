@@ -42,6 +42,7 @@ type mainConfig struct {
 	PlayDir        string
 	LogFile        *os.File
 	IDCs           []string
+	Tags           []map[string]interface{}
 }
 type config struct {
 	mainConfig
@@ -73,7 +74,6 @@ func (c *config) initConfig() {
 		c.DataDir = viper.GetString("main.dataDir")
 		c.PlayDir = viper.GetString("main.playDir")
 		logfile = viper.GetString("main.logfile")
-		c.IDCs = strings.Split(viper.GetString("main.idcs"), ",")
 		c.mysqlConfig.user = viper.GetString("mysql.user")
 		c.mysqlConfig.host = viper.GetString("mysql.host")
 		c.mysqlConfig.port = viper.GetInt("mysql.port")

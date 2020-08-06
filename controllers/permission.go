@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"strconv"
 	"zeus/models"
 	"zeus/modules/webserver/permission"
 )
@@ -68,5 +69,17 @@ func FetchPermissions(ctx *gin.Context) {
 }
 
 func DeletePermission(ctx *gin.Context) {
+	pid, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(200, newHttpResp(100001, fmt.Sprintf("参数错误：%s", err.Error()), nil))
+		return
+	}
+	perm := &models.Permission{}
+	perm.ID = uint(pid)
+	if err := permission.DeletePermission(perm); err != nil {
+		ctx.JSON(200, newHttpResp(100002, fmt.Sprintf("数据库错误：%s", err.Error()), nil))
+		return
+	}
+	ctx.JSON(200, newHttpResp(100000, "删除成功", perm))
 	return
 }

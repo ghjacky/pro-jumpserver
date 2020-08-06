@@ -52,7 +52,7 @@ func FetchPermissions(user *models.User) error {
 	return nil
 }
 
-func FilterPermissionServersByIDC(user *models.User, idc string) (ss models.Servers) {
+func FetchPermissionServers(user *models.User) (ss models.Servers) {
 	// 首先根据user获取对应权限资源
 	if err := FetchPermissions(user); err != nil {
 		common.Log.Errorf("获取用户：%s的权限资源失败：%s", user.Username, err.Error())
@@ -75,24 +75,6 @@ func FilterPermissionServersByIDC(user *models.User, idc string) (ss models.Serv
 	s1.Type = "ssh"
 	s1.Port = 22
 	ss = append(ss, []*models.Server{&s, &s1}...)
-	//////
-	// 根据IDC名称过滤权限资源
-	wg := sync.WaitGroup{}
-	lock := sync.Mutex{}
-	for _, perm := range user.Permissions {
-		for _, s := range perm.Servers {
-			wg.Add(1)
-			go func(s *models.Server) {
-				defer wg.Done()
-				if s.IDC == idc {
-					lock.Lock()
-					ss = append(ss, s)
-					lock.Unlock()
-				}
-			}(s)
-		}
-	}
-	wg.Wait()
 	return
 }
 
@@ -103,4 +85,11 @@ func FetchAllPermissions(query models.Query) (models.Permissions, int, error) {
 		return nil, total, err
 	}
 	return *perms, total, nil
+}
+
+func DeletePermission(perm *models.Permission) (err error) {
+	if err := perm.GetInfo(); err != nil {
+		return err
+	}
+	return perm.Delete()
 }

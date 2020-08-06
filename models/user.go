@@ -2,7 +2,9 @@ package models
 
 import (
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"strings"
+	"time"
 	"zeus/common"
 )
 
@@ -54,7 +56,9 @@ func (u *User) SetValid() (err error) {
 	return common.Mysql.Model(u).UpdateColumns(User{Valid: u.Valid}).Error
 }
 func (u *User) GetInfo(...interface{}) (err error) {
-	return common.Mysql.Preload("Assets").Find(u).Error
+	return common.Mysql.Preload("Permissions", func(db *gorm.DB) *gorm.DB {
+		return db.Where("expire < created_at or expire > ?", time.Now().Format("2006-01-02 15:04:05"))
+	}).Find(u).Error
 }
 func (u *User) Update() (err error) {
 	return common.Mysql.Debug().Save(u).Error

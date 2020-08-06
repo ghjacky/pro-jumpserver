@@ -7,6 +7,7 @@ import (
 	"text/template"
 	"time"
 	"zeus/common"
+	"zeus/external"
 	"zeus/utils"
 )
 
@@ -26,11 +27,16 @@ var IDCs []string
 
 func init() {
 	go func() {
-		time.Sleep(5 * time.Second)
 		for {
+			time.Sleep(2 * time.Second)
 			if len(common.Config.IDCs) != 0 {
 				IDCs = append(common.Config.IDCs, "全部")
 				break
+			} else {
+				common.Config.IDCs = external.FetchEnvs()
+			}
+			if len(common.Config.Tags) == 0 {
+				common.Config.Tags = external.FetchTags()
 			}
 		}
 	}()
