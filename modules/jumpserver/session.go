@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"zeus/common"
 	"zeus/models"
 	"zeus/modules/assets"
@@ -115,15 +116,21 @@ func sessionHandler(session ssh.Session) {
 		go handler.fetchPermedServers()
 		// 初始化handler
 		handler.Initial(session)
-		// session退出前关闭相应缓冲区
+
+		// 关闭eventWriter
 		defer func() {
-			// 关闭eventWriter
 			if err := handler.kbEventWriter.Close(); err != nil {
-				common.Log.Errorln("couldn't close watcher channel")
+				common.Log.Errorln("couldn't close channel for kb watcher")
 			} else {
-				common.Log.Infoln("closing watcher channel")
+				common.Log.Infoln("closing channel for kb watcher")
+			}
+			if err := handler.execEventWriter.Close(); err != nil {
+				common.Log.Errorln("couldn't close channel for exec watcher")
+			} else {
+				common.Log.Infoln("closing channel for exec watcher")
 			}
 		}()
+
 		// 生成用户跳板机登陆事件，并存储
 		handler.generateJPSLoginEvent()
 
@@ -301,7 +308,7 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 		switch len(line) {
 		case 0:
 		case 1:
-			switch strings.ToLower(line) {
+			switch strings.TrimSpace(strings.ToLower(line)) {
 			case "p":
 				h.mu.RLock()
 				// 展示资源
@@ -346,28 +353,34 @@ func (h *interactiveHandler) fetchPermedServers() {
 func (h *interactiveHandler) filterServersByIDC() {
 	if strings.EqualFold(h.selectedIDC, "全部") || strings.EqualFold(h.selectedIDC, "ALL") {
 		h.serversInIdc = h.servers
+		for i, s := range h.serversInIdc {
+			s.ID = uint(i + 1)
+		}
 		return
 	}
 	h.serversInIdc = models.Servers{}
+	c := 1
 	for _, server := range h.servers {
 		if strings.EqualFold(server.IDC, h.selectedIDC) {
+			server.ID = uint(c)
 			h.serversInIdc = append(h.serversInIdc, server)
+			c++
 		}
 	}
 }
 
 func (h *interactiveHandler) displayAllAssets() {
-	for i, s := range h.serversInIdc {
-		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", i+1, s.Hostname, s.IP, s.IDC)))
+	for _, s := range h.serversInIdc {
+		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", s.ID, s.Hostname, s.IP, s.IDC)))
 	}
 }
 
 func (h *interactiveHandler) searchAssets(pattern string) {
-	h.searchedServers = []*models.Server{}
 	pi, err := strconv.Atoi(pattern)
 	if err != nil {
 		pi = -1
 	}
+	h.searchedServers = h.searchedServers[:0]
 	if pi > 0 && pi <= len(h.serversInIdc) {
 		h.searchedServers = append(h.searchedServers, h.serversInIdc[pi-1])
 	} else {
@@ -416,8 +429,8 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 }
 
 func (h *interactiveHandler) displaySearchedServers() {
-	for i, a := range h.searchedServers {
-		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", i+1, a.Hostname, a.IP, a.IDC)))
+	for _, a := range h.searchedServers {
+		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", a.ID, a.Hostname, a.IP, a.IDC)))
 	}
 }
 
@@ -440,9 +453,6 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	var execWatcherExitChan = make(chan bool, 0)
 	h.WatchExecEvent(watcherwg, execWatcherExitChan, loginServerEventId)
 
-	//session.Stdout = h.term.c
-	//session.Stdin = h.term.c
-	//session.Stderr = h.term.c
 	// 监控h.term输入输出及错误 生成相应事件并存储
 	sout, oerr := session.StdoutPipe()
 	sin, ierr := session.StdinPipe()
@@ -455,51 +465,57 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	}
 	// 此处绑定并分流stdin\stdout\stderr
 	stdiowg := sync.WaitGroup{}
-	stdc := make(chan interface{}, 3)
+	stdiowg.Add(3)
 	go func() {
-		stdiowg.Add(1)
+		defer stdiowg.Done()
 		mw := io.MultiWriter(h.term.c, h.kbEventWriter)
-		for {
-			select {
-			case <-stdc:
-				stdiowg.Done()
-				return
-			default:
-				_, ie := io.Copy(mw, sout)
-				if ie != nil {
-					common.Log.Errorf("io error (sout): %s", ie.Error())
-				}
-			}
+		_, ie := io.Copy(mw, sout)
+		if ie != nil {
+			common.Log.Errorf("io error (sout): %s", ie.Error())
 		}
+		common.Log.Debugln("stop out copy")
 	}()
 	go func() {
-		stdiowg.Add(1)
+		defer stdiowg.Done()
 		mw := io.MultiWriter(h.term.c, h.kbEventWriter)
-		for {
-			select {
-			case <-stdc:
-				stdiowg.Done()
-				return
-			default:
-				_, oe := io.Copy(mw, serr)
-				if oe != nil {
-					common.Log.Errorf("io error (serr): %s", oe.Error())
-				}
-			}
+		_, oe := io.Copy(mw, serr)
+		if oe != nil {
+			common.Log.Errorf("io error (serr): %s", oe.Error())
 		}
+		common.Log.Debugln("stop err copy")
 	}()
+
+	stdic := make(chan interface{}, 0)
 	go func() {
-		stdiowg.Add(1)
+		defer stdiowg.Done()
 		mw := io.MultiWriter(h.execEventWriter, sin)
+		rc := make(chan []byte, 0)
+		go func() {
+			for {
+				bf := make([]byte, 1024)
+				n, e := h.term.c.Read(bf)
+				if e != nil {
+					common.Log.Errorf("io read error, return (sin): %s", e.Error())
+					return
+				}
+				select {
+				case <-time.After(5 * time.Second):
+					common.Log.Warnf("io write timeout, return (sin)")
+					return
+				case rc <- bf[:n]:
+				}
+			}
+		}()
 		for {
 			select {
-			case <-stdc:
-				stdiowg.Done()
+			case <-stdic:
+				common.Log.Debugln("stop in copy")
 				return
-			default:
-				_, ee := io.Copy(mw, h.term.c)
-				if ee != nil {
-					common.Log.Errorf("io error (sin): %s", ee.Error())
+			case data := <-rc:
+				_, e := mw.Write(data)
+				if e != nil {
+					common.Log.Errorf("io write error, return (sin): %s", e.Error())
+					return
 				}
 			}
 		}
@@ -511,11 +527,9 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 			case done := <-sessionDone:
 				if done {
 					h.sess.CurrentOn = 0
-					common.Log.Infoln("session done")
-					stdc <- "sin"
-					stdc <- "serr"
-					stdc <- "sout"
+					stdic <- 1
 					stdiowg.Wait()
+					common.Log.Infoln("session done")
 					execWatcherExitChan <- true
 					kbWatcherExitChan <- true
 					watcherwg.Wait()
@@ -538,10 +552,10 @@ func (h *interactiveHandler) Terminal(session *ssh2.Session) (err error) {
 	h.Set()
 	err = session.Shell()
 	err = session.Wait()
-	// session退出，重置相关项
-	h.Reset()
 	// session退出后通过发送退出信号，关闭相应goroutine和io等
 	sessionDone <- true
+	// session退出，重置相关项
+	h.Reset()
 	return
 }
 

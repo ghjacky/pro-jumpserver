@@ -23,6 +23,7 @@ type Permission struct {
 	Tag      string    `gorm:"type:varchar(255)" json:"tag"` // 一个asset对应一个tag，一个tag对应多个server
 	Period   uint16    `json:"period"`
 	Expire   time.Time `json:"expire"`
+	Sudo     uint8     `json:"sudo"`    // 0: 不添加sudo权限 1: 添加sudo权限， 默认：0
 	Servers  Servers   `json:"servers"` // 如果preload有关联的servers则说明直接绑定的主机，可直接获取使用即可，如果没有关联的servers，则根据tag获取servers列表
 }
 

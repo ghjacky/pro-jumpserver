@@ -14,7 +14,7 @@ var ldapItemsLength = 0
 // 从ldap获取用户列表
 func FetchUserFromLDAP() (err error) {
 	searchRequest := ldap.NewSearchRequest(viper.GetString("ldap.search_scope"), ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, "(&(objectClass=organizationalPerson))",
+		0, 0, false, "(&(objectClass=User))",
 		[]string{"mail", "cn", "sAMAccountName", "description"}, nil)
 	sr, err := common.LdapConn.Search(searchRequest)
 	if err != nil {

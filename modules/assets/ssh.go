@@ -17,6 +17,7 @@ type ASSH struct {
 	USER   string      `json:"user"`
 	PASS   string      `json:"pass"`
 	ARGS   string      `json:"args"`
+	KEYSIG ssh.Signer  `json:"key_sig"`
 	Client *ssh.Client `json:"client"`
 }
 
@@ -26,12 +27,16 @@ const SSHTIMEOUT = 15 * time.Second
 // 并进而通过代理将ssh连接转发到远端主机。
 func (a *ASSH) Connect() (c interface{}) {
 	scc := &ssh.ClientConfig{
-		User: a.USER,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(a.PASS),
-		},
+		User:            a.USER,
+		Auth:            []ssh.AuthMethod{},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         SSHTIMEOUT,
+	}
+	if len(a.PASS) != 0 {
+		scc.Auth = append(scc.Auth, ssh.Password(a.PASS))
+	}
+	if a.KEYSIG != nil {
+		scc.Auth = append(scc.Auth, ssh.PublicKeys(a.KEYSIG))
 	}
 	var ip = a.IP
 	var port = a.PORT
@@ -50,6 +55,7 @@ func (a *ASSH) Connect() (c interface{}) {
 		req.SetPPort(pport)
 		req.SetUser(a.USER)
 		req.SetPass(a.PASS)
+		req.SetKeySig(a.KEYSIG)
 		common.Log.Debugf("proxy request: %#v", *req)
 		var respChan = utils.NewTimeoutChan(make(chan []byte, 0))
 		respChan.SetTimeout(15 * time.Second)

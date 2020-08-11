@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path"
 	"zeus/common"
+	"zeus/utils"
 )
 
 const (
@@ -87,7 +88,7 @@ func (js *JumpServer) Run() {
 
 	// 获取hostkey， 无则生成
 	hostkeyPath := path.Join(js.WorkDir, ".js", "hostkey")
-	hostkey := HostKey{
+	hostkey := utils.HostKey{
 		Path:  hostkeyPath,
 		Value: "",
 	}

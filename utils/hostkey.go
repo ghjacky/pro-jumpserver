@@ -1,11 +1,10 @@
-package jumpserver
+package utils
 
 import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
 	"path"
-	"zeus/utils"
 )
 
 type HostKey struct {
@@ -31,19 +30,19 @@ func (hk *HostKey) loadHostKeyFromString(value string) (signer ssh.Signer, err e
 }
 
 func (hk *HostKey) Gen() (signer ssh.Signer, err error) {
-	key, err := utils.GeneratePrivateKey(2048)
+	key, err := GeneratePrivateKey(2048)
 	if err != nil {
 		return
 	}
-	keyBytes := utils.EncodePrivateKeyToPEM(key)
+	keyBytes := EncodePrivateKeyToPEM(key)
 	keyDir := path.Dir(hk.Path)
-	if !utils.FileExists(keyDir) {
+	if !FileExists(keyDir) {
 		err := os.MkdirAll(keyDir, os.ModePerm)
 		if err != nil {
 			return signer, err
 		}
 	}
-	err = utils.WriteKeyToFile(keyBytes, hk.Path)
+	err = WriteKeyToFile(keyBytes, hk.Path)
 	if err != nil {
 		return
 	}

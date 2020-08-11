@@ -21,10 +21,12 @@ type User struct {
 type Users []*User
 
 const (
-	UserValidYes  = "是"
-	UserValidNo   = "否"
-	UserActiveYes = "在线"
-	UserActiveNo  = "下线"
+	UserRoot           = "root"
+	UserRootPubKeyPath = ""
+	UserValidYes       = "是"
+	UserValidNo        = "否"
+	UserActiveYes      = "在线"
+	UserActiveNo       = "下线"
 )
 
 func (u *User) FetchList(query Query) (total int, users Users, err error) {

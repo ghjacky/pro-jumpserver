@@ -587,6 +587,10 @@ func (t *Terminal) addKeyToLine(key rune) {
 		t.line = newLine
 	}
 	t.line = t.line[:len(t.line)+1]
+	if len(t.line) < t.pos {
+		t.pos = len(t.line) - 1
+		t.cursorX = t.pos + len(t.prompt)
+	}
 	copy(t.line[t.pos+1:], t.line[t.pos:])
 	t.line[t.pos] = key
 	if t.echo {

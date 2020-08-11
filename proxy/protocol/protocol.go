@@ -1,9 +1,12 @@
 package protocol
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"strconv"
 	"strings"
+	"zeus/common"
 )
 
 type SProtocol struct {
@@ -14,6 +17,7 @@ type SProtocol struct {
 	Dport  []byte `json:"dport"` // 2byte, 0-65535
 	User   []byte `json:"user"`
 	Pass   []byte `json:"pass"`
+	KeySig []byte `json:"key_sig"`
 	Ppip   []byte `json:"ppip"`   // proxy server public ip
 	Pip    []byte `json:"pip"`    // proxy server private ip
 	Pport  []byte `json:"pport"`  // proxy server port
@@ -78,6 +82,14 @@ func (proto *SProtocol) GetUser() string {
 
 func (proto *SProtocol) GetPass() string {
 	return string(proto.Pass)
+}
+
+func (proto *SProtocol) GetKeySig() ssh.Signer {
+	var ks ssh.Signer
+	if err := json.Unmarshal(proto.KeySig, &ks); err != nil {
+		common.Log.Errorf("failed to get key signer: %s", err.Error())
+	}
+	return ks
 }
 
 func (proto SProtocol) GetDip() string {
@@ -195,6 +207,15 @@ func (proto *SProtocol) SetUser(user string) {
 
 func (proto *SProtocol) SetPass(pass string) {
 	proto.Pass = []byte(pass)
+}
+
+func (proto *SProtocol) SetKeySig(ks ssh.Signer) {
+	b, e := json.Marshal(ks)
+	if e != nil {
+		common.Log.Errorf("failed to set key signer: %s", e.Error())
+		return
+	}
+	proto.KeySig = b
 }
 
 func (proto *SProtocol) SetErr(err string) {

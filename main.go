@@ -2,8 +2,12 @@ package main
 
 import (
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 	"zeus/common"
+	"zeus/models"
 	"zeus/modules/jumpserver"
 	"zeus/modules/webserver/user"
 	"zeus/modules/wsserver"
@@ -11,6 +15,7 @@ import (
 )
 
 func bgJobs() {
+	go catchOsSignal()
 	go func() {
 		for {
 			time.Sleep(5 * time.Minute)
@@ -19,6 +24,17 @@ func bgJobs() {
 			}
 		}
 	}()
+}
+
+func catchOsSignal() {
+	common.Mysql.Exec("update users set active = ?", models.UserActiveNo)
+	common.Log.Debugln("开始监听系统信号")
+	sig := make(chan os.Signal, 0)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGSTOP)
+	<-sig
+	common.Mysql.Exec("update users set active = ?", models.UserActiveNo)
+	common.Log.Debugln("监听到系统推出信号")
+	os.Exit(0)
 }
 
 func main() {

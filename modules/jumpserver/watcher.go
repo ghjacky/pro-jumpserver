@@ -159,10 +159,13 @@ func (lcw *LineChanWriter) Write(p []byte) (n int, err error) {
 	default:
 		// 为什么要转换为string？因为string是值类型，slice是引用类型，嵌套append为使内层变量在append完之后保持不变需要使用完全复制的变量，
 		// 使用string类型即变相的实现了slice的完全复制
-		after := string(lcw.bf[lcw.cbHandler.term.cursorX:])
-		before := string(lcw.bf[:lcw.cbHandler.term.cursorX])
-		lcw.SetBF(append(append([]byte(before), p...), after...))
-		lcw.setCursXToPos(lcw.cbHandler.term.cursorX + len(p))
+		var after, before = "", ""
+		if lcw.cbHandler.sess.CurrentOn == 1 {
+			after = string(lcw.bf[lcw.cbHandler.term.cursorX:])
+			before = string(lcw.bf[:lcw.cbHandler.term.cursorX])
+			lcw.SetBF(append(append([]byte(before), p...), after...))
+			lcw.setCursXToPos(lcw.cbHandler.term.cursorX + len(p))
+		}
 	}
 	return nr, nil
 }
