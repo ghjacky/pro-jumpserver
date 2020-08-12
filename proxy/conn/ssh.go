@@ -13,12 +13,16 @@ import (
 func ConnectToSshServer(cw *SConnWrapper) (net.Conn, error) {
 	sshClientC := &ssh.ClientConfig{
 		User: cw.user,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(cw.pass),
-		},
+		Auth: []ssh.AuthMethod{},
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			return nil
 		},
+	}
+	if len(cw.pass) != 0 {
+		sshClientC.Auth = append(sshClientC.Auth, ssh.Password(cw.pass))
+	}
+	if cw.keysig != nil {
+		sshClientC.Auth = append(sshClientC.Auth, ssh.PublicKeys(cw.keysig))
 	}
 	sshClient, err := ssh.Dial("tcp", net.JoinHostPort(cw.dip, fmt.Sprintf("%d", cw.dport)), sshClientC)
 	if err != nil {

@@ -21,10 +21,8 @@ func AddPermissions(username string, permissions *models.Permissions) error {
 		if err := perm.Add(); err != nil {
 			return err
 		}
-		// if sudo needed, add sudo permission in background jobs
-		if perm.Sudo == 1 {
-			go AddSudo(perm)
-		}
+		// if sudo needed (don't needed), add (delete) sudo permission in background jobs
+		go PermSudo(perm)
 	}
 	return nil
 }

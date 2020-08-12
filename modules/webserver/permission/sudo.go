@@ -11,7 +11,7 @@ import (
 	"zeus/utils"
 )
 
-func AddSudo(perm *models.Permission) {
+func PermSudo(perm *models.Permission) {
 	// first, get all servers with sudo permission needed
 	getServersOfPermission(perm)
 	// second, create goroutine for adding sudo permission by exec command through ssh connection
@@ -20,7 +20,7 @@ func AddSudo(perm *models.Permission) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			execThroughSsh(perm.Username, server)
+			execThroughSsh(perm.Username, perm.Sudo, server)
 		}()
 		if (i+1)%10 == 0 {
 			wg.Wait()
@@ -36,14 +36,10 @@ func getServersOfPermission(perm *models.Permission) {
 	}
 }
 
-func execThroughSsh(username string, server *models.Server) {
+func execThroughSsh(username string, sudo uint8, server *models.Server) {
 	hostkey := utils.HostKey{
 		Path:  models.UserRootPubKeyPath,
 		Value: "",
-	}
-	sshSigner, err := hostkey.Load()
-	if err != nil {
-		common.Log.Fatalf("Couldn't load host key from file: %s", models.UserRootPubKeyPath)
 	}
 	// before everything, you should create a asset and connect it while judge it if the connection needed a proper proxy
 	as := &assets.ASSH{}
@@ -51,18 +47,22 @@ func execThroughSsh(username string, server *models.Server) {
 	as.IP = server.IP
 	as.PORT = server.Port
 	as.USER = models.UserRoot
-	as.KEYSIG = sshSigner
+	as.HOSTKEY = &hostkey
 	ias, err := assets.NewAssetClient(as)
 	if err != nil {
 		common.Log.Errorf("failed to add sudo permission for user: %s (connect): %s", username, err.Error())
 		return
 	}
 	session := ias.NewSession().(*ssh.Session)
-	cmd := fmt.Sprintf("usermod -g ops %s", username)
+	cmd := ""
+	if sudo == 0x01 {
+		cmd = fmt.Sprintf("usermod -a -G tt %s", username)
+	} else {
+		cmd = fmt.Sprintf("deluser %s tt", username)
+	}
 	out, err := session.CombinedOutput(cmd)
 	if err != nil {
 		common.Log.Errorf("failed to add sudo permission for user: %s (exec): %s", username, err.Error())
-		return
 	}
 	common.Log.Warnf("add sudo permission for user: %s (stdout): %s", username, string(out))
 }

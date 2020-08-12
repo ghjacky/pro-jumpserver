@@ -3,6 +3,7 @@ package conn
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"net"
 	"time"
 	"zeus/proxy/common"
@@ -16,9 +17,14 @@ type SConnWrapper struct {
 	prport uint16 // 此处为random port
 	user   string
 	pass   string
+	keysig ssh.Signer
 	dip    string
 	dport  uint16
 }
+
+const (
+	SSHTIMEOUT = 15 * time.Second
+)
 
 // HandleSrcConn 客户端连接处理函数， 接受数据包，解析数据包，获取ssh client相关信息，然后connect ssh server，
 // 调用相关函数进行连接双向绑定
@@ -35,30 +41,14 @@ func HandleClientConn(c net.Conn) {
 	defer CPool.WipeOut(c)
 	cw := newConnWrapper(c)
 	var clientDataCh = utils.NewTimeoutChan(make(chan []byte, 0))
-	clientDataCh.SetTimeout(15 * time.Second)
+	clientDataCh.SetTimeout(SSHTIMEOUT)
 	go func() {
-		buf := make([]byte, 0)
-		tbf := make([]byte, 256)
-		for {
-			n, err := c.Read(tbf)
-			if err != nil {
-				SendBack(c, cw.ppip, fmt.Sprintf("socket read error: %s", err.Error()), 0)
-				break
-			}
-			buf = append(buf, tbf[:n]...)
-			if n < 256 {
-				if timeout := clientDataCh.WriteWithTimeout(buf); timeout {
-					common.Log.Errorln("sent to client timeout")
-					return
-				}
-				buf = make([]byte, 0)
-				tbf = make([]byte, 256)
-			}
-		}
+		utils.RecvFrom(c, clientDataCh)
 	}()
 	buffer, timeout := clientDataCh.ReadWithTimeout()
 	if timeout {
 		common.Log.Errorln("read from client timeout")
+		SendBack(c, "", "socket read error", 0)
 		return
 	}
 	dd := []byte(utils.Dec(string(buffer)))
@@ -72,6 +62,7 @@ func HandleClientConn(c net.Conn) {
 		cw.dport = req.GetDPort()
 		cw.user = req.GetUser()
 		cw.pass = req.GetPass()
+		cw.keysig = req.GetKeySig()
 		cw.ppip = req.GetPPip()
 		ptsconn, e := ConnectToSshServer(cw)
 		if e != nil {
@@ -89,6 +80,9 @@ func HandleClientConn(c net.Conn) {
 }
 
 func SendBack(c net.Conn, ppip, err string, prport uint16) {
+	if len(err) != 0 {
+		common.Log.Warnf("error to be send back: %s", err)
+	}
 	resp := protocol.NewMessage()
 	resp.SetT(1)
 	if err := resp.SetPPip(ppip); err != nil {
@@ -102,8 +96,7 @@ func SendBack(c net.Conn, ppip, err string, prport uint16) {
 		common.Log.Errorf("response data marshal eror: %s", e.Error())
 		return
 	}
-	common.Log.Debugf("send response to client: %s", string(data))
-	_, e = c.Write(data)
+	e = utils.SendTo(c, data)
 	if e != nil {
 		common.Log.Errorf("data send back error: %s", e.Error())
 		return

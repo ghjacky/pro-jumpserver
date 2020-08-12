@@ -14,14 +14,16 @@ import (
 
 type ASSH struct {
 	ACommon
-	USER   string      `json:"user"`
-	PASS   string      `json:"pass"`
-	ARGS   string      `json:"args"`
-	KEYSIG ssh.Signer  `json:"key_sig"`
-	Client *ssh.Client `json:"client"`
+	USER    string         `json:"user"`
+	PASS    string         `json:"pass"`
+	ARGS    string         `json:"args"`
+	HOSTKEY *utils.HostKey `json:"host_key"`
+	Client  *ssh.Client    `json:"client"`
 }
 
-const SSHTIMEOUT = 15 * time.Second
+const (
+	SSHTIMEOUT = 15 * time.Second
+)
 
 // Connect 远端主机ssh连接；首先判断资产所属IDC，进一步判断通往此IDC是否设置有相应的代理，如果有设置代理，则需要连接代理，
 // 并进而通过代理将ssh连接转发到远端主机。
@@ -35,8 +37,12 @@ func (a *ASSH) Connect() (c interface{}) {
 	if len(a.PASS) != 0 {
 		scc.Auth = append(scc.Auth, ssh.Password(a.PASS))
 	}
-	if a.KEYSIG != nil {
-		scc.Auth = append(scc.Auth, ssh.PublicKeys(a.KEYSIG))
+	if a.HOSTKEY != nil {
+		sig, e := a.HOSTKEY.Load()
+		if e != nil {
+			common.Log.Errorf("failed to load host key: %s", e.Error())
+		}
+		scc.Auth = append(scc.Auth, ssh.PublicKeys(sig))
 	}
 	var ip = a.IP
 	var port = a.PORT
@@ -54,11 +60,14 @@ func (a *ASSH) Connect() (c interface{}) {
 		req.SetPip(pip)
 		req.SetPPort(pport)
 		req.SetUser(a.USER)
-		req.SetPass(a.PASS)
-		req.SetKeySig(a.KEYSIG)
-		common.Log.Debugf("proxy request: %#v", *req)
+		if len(a.PASS) != 0 {
+			req.SetPass(a.PASS)
+		}
+		if a.HOSTKEY != nil {
+			req.SetKeySig(*a.HOSTKEY)
+		}
 		var respChan = utils.NewTimeoutChan(make(chan []byte, 0))
-		respChan.SetTimeout(15 * time.Second)
+		respChan.SetTimeout(SSHTIMEOUT)
 		proxy := connectToProxy(ppip, pport)
 		if proxy == nil {
 			common.Log.Errorf("connect to proxy error")
@@ -78,7 +87,7 @@ func (a *ASSH) Connect() (c interface{}) {
 	}
 	// 连接
 	if sc, err := connectToSSH(ip, port, scc); err != nil {
-		common.Log.Errorf("Couldn't connect remote host: %s", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
+		common.Log.Errorf("Couldn't connect remote host (%s): %s", net.JoinHostPort(ip, fmt.Sprintf("%d", port)), err.Error())
 		return
 	} else {
 		c = sc
@@ -96,7 +105,7 @@ func (a *ASSH) NewSession() (s interface{}) {
 }
 
 func (a *ASSH) useProxy(req protocol.SProtocol, proxy net.Conn, respChan *utils.TimeoutChan) (*protocol.SProtocol, error) {
-	go recvFromProxy(proxy, respChan)
+	go utils.RecvFrom(proxy, respChan)
 	if err := sendToProxy(proxy, req); err != nil {
 		return nil, err
 	}
@@ -127,37 +136,19 @@ func connectToProxy(ip string, port uint16) net.Conn {
 
 func sendToProxy(c net.Conn, req protocol.SProtocol) error {
 	d, err := json.Marshal(req)
+	common.Log.Debugf("send to proxy (01): %s", string(d))
 	ed := []byte(utils.Enc(string(d)))
+	common.Log.Debugf("send to proxy (02): len: %d - %s", len(ed), string(ed))
 	if err != nil {
 		common.Log.Errorf("req marshal error: %s", err.Error())
 		return err
 	}
-	if _, err := c.Write(ed); err != nil {
+	if err := utils.SendTo(c, ed); err != nil {
 		common.Log.Errorf("failed to send req to proxy: %s", err.Error())
 		return err
 	}
 	common.Log.Debugln("client send data to proxy successfully")
 	return nil
-}
-
-func recvFromProxy(c net.Conn, respChan *utils.TimeoutChan) {
-	var buf = make([]byte, 0)
-	var tbf = make([]byte, 256)
-	for {
-		n, err := c.Read(tbf)
-		if err != nil {
-			common.Log.Warnf("proxy may be disconnected: %s", err.Error())
-			break
-		}
-		buf = append(buf, tbf[:n]...)
-		if n < 256 {
-			if timeout := respChan.WriteWithTimeout(buf); timeout {
-				return
-			}
-			buf = make([]byte, 0)
-			tbf = make([]byte, 256)
-		}
-	}
 }
 
 func connectToSSH(ip string, port uint16, scc *ssh.ClientConfig) (*ssh.Client, error) {

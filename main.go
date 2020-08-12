@@ -52,7 +52,7 @@ func main() {
 	// 运行websocket server
 	go wsserver.Run()
 	defer common.Exit()
-	//bgJobs()
+	bgJobs()
 	//jumpserver.GenGACqr()
 	// 运行jumpserver
 	jumpserver.InitJumpServer()

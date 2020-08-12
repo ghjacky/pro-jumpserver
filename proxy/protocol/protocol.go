@@ -1,28 +1,29 @@
 package protocol
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gliderlabs/ssh"
+	"os"
 	"strconv"
 	"strings"
 	"zeus/common"
+	"zeus/utils"
 )
 
 type SProtocol struct {
 	Header map[string]interface{}
 	//Len    uint32 // len(dip) + len(dport) + + len(t) + len(pip) + len(pport)...
-	T      []byte `json:"t"`     // 1byte, 0: req; 1:resp
-	Dip    []byte `json:"dip"`   // 4byte, 0-255 for every node
-	Dport  []byte `json:"dport"` // 2byte, 0-65535
-	User   []byte `json:"user"`
-	Pass   []byte `json:"pass"`
-	KeySig []byte `json:"key_sig"`
-	Ppip   []byte `json:"ppip"`   // proxy server public ip
-	Pip    []byte `json:"pip"`    // proxy server private ip
-	Pport  []byte `json:"pport"`  // proxy server port
-	Prport []byte `json:"prport"` // proxy listener random port
-	Err    []byte `json:"err"`    // empty: everything is ok; not empty: error occurred
+	T       []byte `json:"t"`     // 1byte, 0: req; 1:resp
+	Dip     []byte `json:"dip"`   // 4byte, 0-255 for every node
+	Dport   []byte `json:"dport"` // 2byte, 0-65535
+	User    []byte `json:"user"`
+	Pass    []byte `json:"pass"`
+	HostKey []byte `json:"host_key"`
+	Ppip    []byte `json:"ppip"`   // proxy server public ip
+	Pip     []byte `json:"pip"`    // proxy server private ip
+	Pport   []byte `json:"pport"`  // proxy server port
+	Prport  []byte `json:"prport"` // proxy listener random port
+	Err     []byte `json:"err"`    // empty: everything is ok; not empty: error occurred
 }
 
 func NewMessage() *SProtocol {
@@ -85,11 +86,14 @@ func (proto *SProtocol) GetPass() string {
 }
 
 func (proto *SProtocol) GetKeySig() ssh.Signer {
-	var ks ssh.Signer
-	if err := json.Unmarshal(proto.KeySig, &ks); err != nil {
-		common.Log.Errorf("failed to get key signer: %s", err.Error())
+	var hostKey utils.HostKey
+	hostKey.Value = string(proto.HostKey)
+	sig, err := hostKey.Load()
+	if err != nil {
+		common.Log.Errorf("couldn't load host key from value: %s", err.Error())
+		return nil
 	}
-	return ks
+	return sig
 }
 
 func (proto SProtocol) GetDip() string {
@@ -209,13 +213,19 @@ func (proto *SProtocol) SetPass(pass string) {
 	proto.Pass = []byte(pass)
 }
 
-func (proto *SProtocol) SetKeySig(ks ssh.Signer) {
-	b, e := json.Marshal(ks)
-	if e != nil {
-		common.Log.Errorf("failed to set key signer: %s", e.Error())
+func (proto *SProtocol) SetKeySig(ks utils.HostKey) {
+	ksf, err := os.Open(ks.Path)
+	if err != nil {
+		common.Log.Errorf("failed to load host key from file: %s", ks.Path)
 		return
 	}
-	proto.KeySig = b
+	var bf = make([]byte, 2048)
+	n, err := ksf.Read(bf)
+	if err != nil {
+		common.Log.Errorf("failed to load host key from file: %s", ks.Path)
+		return
+	}
+	proto.HostKey = bf[:n]
 }
 
 func (proto *SProtocol) SetErr(err string) {
