@@ -214,6 +214,10 @@ func (proto *SProtocol) SetPass(pass string) {
 }
 
 func (proto *SProtocol) SetKeySig(ks utils.HostKey) {
+	if len(ks.Value) != 0 {
+		proto.HostKey = []byte(ks.Value)
+		return
+	}
 	ksf, err := os.Open(ks.Path)
 	if err != nil {
 		common.Log.Errorf("failed to load host key from file: %s", ks.Path)

@@ -90,7 +90,7 @@ func (js *JumpServer) Run() {
 	hostkeyPath := path.Join(js.WorkDir, ".js", "hostkey")
 	hostkey := utils.HostKey{
 		Path:  hostkeyPath,
-		Value: "",
+		Value: common.Config.PrivateKey,
 	}
 	sshSigner, err := hostkey.Load()
 	if err != nil {

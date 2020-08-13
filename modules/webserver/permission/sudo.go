@@ -39,7 +39,7 @@ func getServersOfPermission(perm *models.Permission) {
 func execThroughSsh(username string, sudo uint8, server *models.Server) {
 	hostkey := utils.HostKey{
 		Path:  models.UserRootPubKeyPath,
-		Value: "",
+		Value: common.Config.PrivateKey,
 	}
 	// before everything, you should create a asset and connect it while judge it if the connection needed a proper proxy
 	as := &assets.ASSH{}

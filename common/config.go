@@ -43,6 +43,8 @@ type mainConfig struct {
 	LogFile        *os.File
 	IDCs           []string
 	Tags           []map[string]interface{}
+	HostKey        string
+	PrivateKey     string
 }
 type config struct {
 	mainConfig
@@ -73,6 +75,8 @@ func (c *config) initConfig() {
 		c.WorkDir = viper.GetString("main.workDir")
 		c.DataDir = viper.GetString("main.dataDir")
 		c.PlayDir = viper.GetString("main.playDir")
+		c.HostKey = viper.GetString("main.host_key")
+		c.PrivateKey = viper.GetString("main.private_key")
 		logfile = viper.GetString("main.logfile")
 		c.mysqlConfig.user = viper.GetString("mysql.user")
 		c.mysqlConfig.host = viper.GetString("mysql.host")

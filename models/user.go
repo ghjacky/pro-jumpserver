@@ -22,7 +22,7 @@ type Users []*User
 
 const (
 	UserRoot           = "root"
-	UserRootPubKeyPath = "/Users/guomingyang/.ssh/id_rsa"
+	UserRootPubKeyPath = "/root/.ssh/id_rsa.pub"
 	UserValidYes       = "是"
 	UserValidNo        = "否"
 	UserActiveYes      = "在线"
