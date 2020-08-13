@@ -7,7 +7,7 @@ import (
 type TimeoutChan struct {
 	CH      chan []byte
 	timeout time.Duration
-	done    <-chan time.Time
+	timer   *time.Timer
 }
 
 func NewTimeoutChan(ch chan []byte) *TimeoutChan {
@@ -18,22 +18,15 @@ func NewTimeoutChan(ch chan []byte) *TimeoutChan {
 
 func (tc *TimeoutChan) SetTimeout(duration time.Duration) {
 	tc.timeout = duration
-	tc.done = time.Tick(tc.timeout)
-}
-
-func (tc *TimeoutChan) Wait() {
-	<-tc.done
-}
-
-func (tc *TimeoutChan) ResetTicker() {
-	tc.done = time.Tick(tc.timeout)
+	tc.timer = time.NewTimer(tc.timeout)
 }
 
 func (tc *TimeoutChan) ReadWithTimeout() ([]byte, bool) {
 	select {
 	case data := <-tc.CH:
 		return data, false
-	case <-tc.done:
+	case <-tc.timer.C:
+		tc.timer.Stop()
 		return nil, true
 	}
 }
@@ -42,7 +35,8 @@ func (tc *TimeoutChan) WriteWithTimeout(data []byte) bool {
 	select {
 	case tc.CH <- data:
 		return false
-	case <-tc.done:
+	case <-tc.timer.C:
+		tc.timer.Stop()
 		return true
 	}
 }
