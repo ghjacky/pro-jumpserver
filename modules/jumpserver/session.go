@@ -49,6 +49,7 @@ type interactiveHandler struct {
 
 // sessionHandler handle user connection when connecting to jumpserver
 var SessionPool = map[string]map[string]ssh.Session{}
+var splock = sync.Mutex{}
 
 // 登陆后首先更新用户活动状态(db)
 func changeOnlineStatus(username string, status string) {
@@ -64,8 +65,7 @@ func changeOnlineStatus(username string, status string) {
 func addSessionToPool(session ssh.Session) {
 	user := session.Context().Value(ssh.ContextKeyUser).(string)
 	sid := session.Context().Value(ssh.ContextKeySessionID).(string)
-	lock := sync.Mutex{}
-	lock.Lock()
+	splock.Lock()
 	if _, ok := SessionPool[user]; ok {
 		SessionPool[user][sid] = session
 	} else {
@@ -73,13 +73,12 @@ func addSessionToPool(session ssh.Session) {
 		SessionPool[user][sid] = session
 	}
 	changeOnlineStatus(user, models.UserActiveYes)
-	lock.Unlock()
+	splock.Unlock()
 }
 func removeSessionFromPool(session ssh.Session) {
 	user := session.Context().Value(ssh.ContextKeyUser).(string)
 	sid := session.Context().Value(ssh.ContextKeySessionID).(string)
-	lock := sync.Mutex{}
-	lock.Lock()
+	splock.Lock()
 	if _, ok := SessionPool[user]; ok {
 		delete(SessionPool[user], sid)
 		if len(SessionPool[user]) == 0 {
@@ -87,7 +86,7 @@ func removeSessionFromPool(session ssh.Session) {
 		}
 	}
 	changeOnlineStatus(user, models.UserActiveNo)
-	lock.Unlock()
+	splock.Unlock()
 }
 func sessionHandlerWrapper(session ssh.Session) {
 	wg := sync.WaitGroup{}
