@@ -201,7 +201,7 @@ func (h *interactiveHandler) Watch(event audit.IEvent, we chan bool) {
 			select {
 			case data := <-h.execEventWriter.ch:
 				e.Command = string(data)
-				common.Log.Printf("Full command string: %s", e.Command)
+				//common.Log.Printf("Full command string: %s", e.Command)
 				e.Timestamp = time.Now().UnixNano()
 				if err := e.WriteToBuffer(e); err != nil {
 					common.Log.Errorf("couldn't write exec event to store")

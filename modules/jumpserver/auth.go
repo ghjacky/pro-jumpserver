@@ -32,50 +32,37 @@ func checkKBI(ctx ssh.Context, challenge ssh2.KeyboardInteractiveChallenge) (res
 	username := ctx.User()
 	answers, err := challenge(username, kbiInstruction, []string{kbiQuestionPassword, kbiQuestionCode}, []bool{false, true})
 	if err != nil || len(answers) != 2 {
+		_, _ = challenge(username, "", []string{"缺失认证信息！"}, []bool{true})
 		return
 	}
 	password := answers[0]
 	// 首先检测账户是否可用
 	u := models.User{Username: username}
 	if !user.IsValid(&u) {
+		_, _ = challenge(username, "", []string{"账户不可用!"}, []bool{true})
 		return false
 	}
 	code := answers[1]
 	// GAC + LDAP认证
-	res = authLDAP(u, password)
 	res = authGAC(code) && authLDAP(u, password)
 	if res {
 		// 登陆成功，将用户信息写入context
 		ctx.SetValue("loginUser", username)
 		ctx.SetValue("loginPass", password)
-		common.Log.Infof("用户：%s 登陆成功", username)
 	} else {
-		common.Log.Errorf("用户：%s 登陆失败", username)
+		_, _ = challenge(username, "", []string{"密码或GAC错误!"}, []bool{true})
 	}
 	return
 }
 
 // 密码认证
 func checkUserPassword(ctx ssh.Context, password string) (res bool) {
-	if len(password) != 0 {
-		username := ctx.User()
-		// 走ldap认证
-		res = authLDAP(models.User{Username: username}, password)
-		if res {
-			ctx.SetValue("loginUser", username)
-			ctx.SetValue("loginPass", password)
-			common.Log.Infof("用户：%s 登陆成功", username)
-		} else {
-			common.Log.Errorf("用户：%s 登陆失败", username)
-		}
-	}
 	return res
 }
 
 // 公钥认证
 func checkUserPublicKey(ctx ssh.Context, publickey ssh.PublicKey) (res bool) {
-
-	return false
+	return
 }
 
 // ldap 认证
