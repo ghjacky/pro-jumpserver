@@ -20,15 +20,15 @@ func initAll() {
 		//&models.SIDC{},
 		&models.SProxy{})
 	// -- temp test code
-	var p = models.SProxy{
-		IDC:  "北京",
-		PIP:  []byte{192, 168, 32, 75},
-		PPIP: []byte{106, 12, 80, 193},
-		//PIP:   []byte{192, 168, 72, 138},
-		//PPIP:  []byte{127, 0, 0, 1},
-		PPORT: 2000,
-	}
-	p.Add()
+	//var p = models.SProxy{
+	//	IDC:  "北京",
+	//	PIP:  []byte{192, 168, 32, 75},
+	//	PPIP: []byte{106, 12, 80, 193},
+	//	//PIP:   []byte{192, 168, 72, 138},
+	//	//PPIP:  []byte{127, 0, 0, 1},
+	//	PPORT: 2000,
+	//}
+	//p.Add()
 	// --
 	router.Init()
 }
