@@ -18,10 +18,10 @@ func PermSudo(perm *models.Permission) {
 	wg := sync.WaitGroup{}
 	for i, server := range perm.Servers {
 		wg.Add(1)
-		go func() {
+		go func(server *models.Server) {
 			defer wg.Done()
 			execThroughSsh(perm.Username, perm.Sudo, server)
-		}()
+		}(server)
 		if (i+1)%10 == 0 {
 			wg.Wait()
 		}
