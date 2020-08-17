@@ -76,7 +76,7 @@ func (c *config) initConfig() {
 		c.DataDir = viper.GetString("main.dataDir")
 		c.PlayDir = viper.GetString("main.playDir")
 		c.HostKey = viper.GetString("main.host_key")
-		c.PrivateKey = viper.GetString("main.private_key")
+		c.PrivateKey = c.HostKey
 		logfile = viper.GetString("main.logfile")
 		c.mysqlConfig.user = viper.GetString("mysql.user")
 		c.mysqlConfig.host = viper.GetString("mysql.host")

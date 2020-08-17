@@ -19,4 +19,5 @@ func Register() {
 	userRouter(R)
 	eventRouter(R)
 	idcRouter(R)
+	jsRouter(R)
 }
