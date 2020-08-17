@@ -396,7 +396,11 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 		switch s.Type {
 		case models.ServerTypeSSH:
 			as := &assets.ASSH{}
-			as.IDC = h.selectedIDC
+			if h.selectedIDC == "全部" || h.selectedIDC == "ALL" {
+				as.IDC = s.IDC
+			} else {
+				as.IDC = h.selectedIDC
+			}
 			as.IP = s.IP
 			as.PORT = s.Port
 			as.USER = h.user
