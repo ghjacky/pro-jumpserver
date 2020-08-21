@@ -18,9 +18,9 @@ const (
 
 type Permission struct {
 	gorm.Model
-	Username string    `json:"username"`
-	Type     int8      `gorm:"not null" json:"type"`         // 权限类型：0: "tag" or 1: "host"
-	Tag      string    `gorm:"type:varchar(255)" json:"tag"` // 一个asset对应一个tag，一个tag对应多个server
+	Username string    `json:"username" gorm:"unique_index:user_perm_tag"`
+	Type     int8      `gorm:"not null" json:"type"`                                    // 权限类型：0: "tag" or 1: "host"
+	Tag      string    `gorm:"type:varchar(255);unique_index:user_perm_tag" json:"tag"` // 一个asset对应一个tag，一个tag对应多个server
 	Period   uint16    `json:"period"`
 	Expire   time.Time `json:"expire"`
 	Sudo     uint8     `json:"sudo" gorm:"default:0"` // 0: 不添加sudo权限 1: 添加sudo权限， 默认：0
@@ -29,12 +29,32 @@ type Permission struct {
 
 type Permissions []*Permission
 
-func (p *Permission) BeforeCreate(db *gorm.DB) {
+func (p *Permission) BeforeCreate(db *gorm.DB) error {
 	if p.Period == 0 {
 		p.Expire = time.Now().Add(-1 * 24 * time.Hour)
 	} else {
 		p.Expire = time.Now().Add(time.Duration(p.Period) * 24 * time.Hour)
 	}
+	// 判断该权限下的tag或者主机是否已存在于该用户的其他权限条目下
+	if p.Type == 1 {
+		perms := new(Permissions)
+		if e := perms.GetHostsPermByUsername(p.Username); e != nil {
+			return e
+		}
+		servers := perms.GetPermedHosts()
+		var serverMap = map[string]bool{}
+		if len(servers) > 0 {
+			for _, s := range servers {
+				serverMap[s.IDC+"-"+s.IP] = true
+			}
+		}
+		for _, s := range p.Servers {
+			if v, ok := serverMap[s.IDC+"-"+s.IP]; ok && v {
+				return fmt.Errorf("server (%s-%s) already permed", s.IDC, s.IP)
+			}
+		}
+	}
+	return nil
 }
 
 func (p *Permission) AfterFind(db *gorm.DB) {
@@ -86,4 +106,20 @@ func (p *Permission) Delete() (err error) {
 
 func (p *Permission) IsExpire() bool {
 	return p.Expire.After(p.CreatedAt) && p.Expire.Before(time.Now())
+}
+
+func (ps *Permissions) GetHostsPermByUsername(username string) (err error) {
+	var t = 1
+	e := common.Mysql.Model(&Permission{}).Where("username = ?", username).Where("type = ?", t).Find(ps).Error
+	if e != nil {
+
+	}
+	return err
+}
+
+func (ps *Permissions) GetPermedHosts() (ss Servers) {
+	for _, p := range *ps {
+		ss = append(ss, p.Servers...)
+	}
+	return
 }
