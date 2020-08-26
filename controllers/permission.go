@@ -21,6 +21,7 @@ func UpdateUserPermissions(ctx *gin.Context) {
 		ctx.JSON(200, newHttpResp(100002, "权限更新错误", nil))
 		return
 	}
+	go permission.PermSudo(p)
 	db.Commit()
 	ctx.JSON(200, newHttpResp(100000, "权限更新成功", p))
 	return
