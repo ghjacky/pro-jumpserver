@@ -38,7 +38,7 @@ func (p *Permission) BeforeCreate(db *gorm.DB) error {
 	// 判断该权限下的tag或者主机是否已存在于该用户的其他权限条目下
 	if p.Type == 1 {
 		perms := new(Permissions)
-		if e := perms.GetHostsPermByUsername(p.Username); e != nil {
+		if e := perms.GetHostsPermByUsername(p.Username, db); e != nil {
 			return e
 		}
 		servers := perms.GetPermedHosts()
@@ -88,29 +88,38 @@ func (p *Permission) GetInfo() (err error) {
 	return common.Mysql.Preload("Servers").First(p).Error
 }
 
-func (p *Permission) Update() (err error) {
-	return
+func (p *Permission) Update(db *gorm.DB) (err error) {
+	var _p = new(Permission)
+	_p.ID = p.ID
+	if err := _p.Delete(db); err != nil && !gorm.IsRecordNotFoundError(err) {
+		return err
+	}
+	p.ID = 0
+	if err := p.Add(db); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *Permission) Patch(...interface{}) (err error) {
 	return
 }
 
-func (p *Permission) Add() (err error) {
-	return common.Mysql.Debug().Create(p).Error
+func (p *Permission) Add(db *gorm.DB) (err error) {
+	return db.Debug().Create(p).Error
 }
 
-func (p *Permission) Delete() (err error) {
-	return common.Mysql.Debug().Delete(p).Error
+func (p *Permission) Delete(db *gorm.DB) (err error) {
+	return db.Debug().Delete(p).Error
 }
 
 func (p *Permission) IsExpire() bool {
 	return p.Expire.After(p.CreatedAt) && p.Expire.Before(time.Now())
 }
 
-func (ps *Permissions) GetHostsPermByUsername(username string) (err error) {
+func (ps *Permissions) GetHostsPermByUsername(username string, db *gorm.DB) (err error) {
 	var t = 1
-	e := common.Mysql.Model(&Permission{}).Where("username = ?", username).Where("type = ?", t).Find(ps).Error
+	e := db.Model(&Permission{}).Where("username = ?", username).Where("type = ?", t).Find(ps).Error
 	if e != nil {
 
 	}

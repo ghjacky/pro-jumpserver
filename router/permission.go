@@ -11,7 +11,7 @@ func permissionRouter(r *gin.Engine) {
 		permR.GET("", controllers.FetchPermissions)
 		permR.GET("/:username", controllers.GetUserPermissions)
 		permR.POST("/:username", controllers.AddUserPermissions)
-		permR.PUT("", controllers.SetUserPermissions)
+		permR.PUT("", controllers.UpdateUserPermissions)
 		permR.DELETE("/:id", controllers.DeletePermission)
 	}
 }

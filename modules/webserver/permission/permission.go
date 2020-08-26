@@ -8,7 +8,7 @@ import (
 	"zeus/models"
 )
 
-func AddPermissions(username string, permissions *models.Permissions) error {
+func AddPermissions(username string, permissions *models.Permissions, db *gorm.DB) error {
 	// user不存在则创建
 	var user = models.User{Username: username}
 	if err := user.GetInfo(nil); gorm.IsRecordNotFoundError(err) {
@@ -18,7 +18,7 @@ func AddPermissions(username string, permissions *models.Permissions) error {
 	}
 	// save permissions
 	for _, perm := range *permissions {
-		if err := perm.Add(); err != nil {
+		if err := perm.Add(db); err != nil {
 			return err
 		}
 		// if sudo needed (don't needed), add (delete) sudo permission in background jobs
@@ -63,20 +63,6 @@ func FetchPermissionServers(user *models.User) (ss models.Servers) {
 	for _, perm := range user.Permissions {
 		ss = append(ss, perm.Servers...)
 	}
-	////// 测试数据
-	//s := models.Server{}
-	//s.IP = "192.168.32.7"
-	//s.Hostname = "dev_server_01"
-	//s.IDC = "北京"
-	//s.Type = "ssh"
-	//s.Port = 22
-	//s1 := models.Server{}
-	//s1.IP = "172.16.244.28"
-	//s1.Hostname = "dev_server_02"
-	//s1.IDC = "天津"
-	//s1.Type = "ssh"
-	//s1.Port = 22
-	//ss = append(ss, []*models.Server{&s, &s1}...)
 	return
 }
 
@@ -89,9 +75,13 @@ func FetchAllPermissions(query models.Query) (models.Permissions, int, error) {
 	return *perms, total, nil
 }
 
-func DeletePermission(perm *models.Permission) (err error) {
+func DeletePermission(perm *models.Permission, db *gorm.DB) (err error) {
 	if err := perm.GetInfo(); err != nil {
 		return err
 	}
-	return perm.Delete()
+	return perm.Delete(db)
+}
+
+func Update(perm *models.Permission, db *gorm.DB) (err error) {
+	return perm.Update(db)
 }

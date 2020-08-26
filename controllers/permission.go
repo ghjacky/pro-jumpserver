@@ -4,12 +4,26 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"zeus/common"
 	"zeus/models"
 	"zeus/modules/webserver/permission"
 )
 
-func SetUserPermissions(ctx *gin.Context) {
-
+func UpdateUserPermissions(ctx *gin.Context) {
+	var p = new(models.Permission)
+	if err := ctx.BindJSON(p); err != nil {
+		ctx.JSON(200, newHttpResp(100001, "参数错误", nil))
+		return
+	}
+	db := common.Mysql.Begin()
+	if err := permission.Update(p, db); err != nil {
+		db.Rollback()
+		ctx.JSON(200, newHttpResp(100002, "权限更新错误", nil))
+		return
+	}
+	db.Commit()
+	ctx.JSON(200, newHttpResp(100000, "权限更新成功", p))
+	return
 }
 
 /*
@@ -45,10 +59,13 @@ func AddUserPermissions(ctx *gin.Context) {
 		ctx.JSON(200, newHttpResp(100001, fmt.Sprintf("参数错误: %s", err.Error()), nil))
 		return
 	}
-	if err := permission.AddPermissions(username, &asts); err != nil {
+	db := common.Mysql.Begin()
+	if err := permission.AddPermissions(username, &asts, db); err != nil {
+		db.Rollback()
 		ctx.JSON(200, newHttpResp(100102, fmt.Sprintf("资源权限绑定失败：%s", err.Error()), nil))
 		return
 	}
+	db.Commit()
 	ctx.JSON(200, newHttpResp(100000, "资源权限绑定成功", map[string]interface{}{"username": username, "assets": asts}))
 	return
 }
@@ -76,10 +93,13 @@ func DeletePermission(ctx *gin.Context) {
 	}
 	perm := &models.Permission{}
 	perm.ID = uint(pid)
-	if err := permission.DeletePermission(perm); err != nil {
+	db := common.Mysql.Begin()
+	if err := permission.DeletePermission(perm, db); err != nil {
+		db.Rollback()
 		ctx.JSON(200, newHttpResp(100002, fmt.Sprintf("数据库错误：%s", err.Error()), nil))
 		return
 	}
+	db.Commit()
 	ctx.JSON(200, newHttpResp(100000, "删除成功", perm))
 	return
 }
