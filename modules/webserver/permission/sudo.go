@@ -56,9 +56,9 @@ func execThroughSsh(username string, sudo uint8, server *models.Server) {
 	session := ias.NewSession().(*ssh.Session)
 	cmd := ""
 	if sudo == 0x01 {
-		cmd = fmt.Sprintf("usermod -a -G tt %s", username)
+		cmd = fmt.Sprintf("usermod -a -G rops %s", username)
 	} else {
-		cmd = fmt.Sprintf("deluser %s tt", username)
+		cmd = fmt.Sprintf("deluser %s rops", username)
 	}
 	out, err := session.CombinedOutput(cmd)
 	if err != nil {
