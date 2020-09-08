@@ -110,7 +110,7 @@ func (p *Permission) Add(db *gorm.DB) (err error) {
 }
 
 func (p *Permission) Delete(db *gorm.DB) (err error) {
-	return db.Debug().Delete(p).Error
+	return db.Debug().Unscoped().Delete(p).Error
 }
 
 func (p *Permission) IsExpire() bool {
