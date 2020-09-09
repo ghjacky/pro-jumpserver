@@ -320,7 +320,7 @@ func (h *interactiveHandler) Dispatch(sessionExitSignal chan bool) {
 				h.displayBanner()
 				sessionExitSignal <- false
 				return
-				//h.refreshAssetsAndNodesData()
+				// h.refreshAssetsAndNodesData()
 			case "q":
 				common.Log.Info("exit session")
 				sessionExitSignal <- true
@@ -384,7 +384,7 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 		h.searchedServers = append(h.searchedServers, h.serversInIdc[pi-1])
 	} else {
 		for _, a := range h.serversInIdc {
-			if strings.HasPrefix(a.IP, pattern) || strings.HasPrefix(a.Hostname, pattern) {
+			if strings.Contains(a.IP, pattern) || strings.Contains(a.Hostname, pattern) {
 				h.searchedServers = append(h.searchedServers, a)
 			}
 		}
@@ -433,7 +433,7 @@ func (h *interactiveHandler) searchAssets(pattern string) {
 
 func (h *interactiveHandler) displaySearchedServers() {
 	for _, a := range h.searchedServers {
-		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s		%s	%s\n", a.ID, a.Hostname, a.IP, a.IDC)))
+		_, _ = h.term.c.Write([]byte(fmt.Sprintf("%d	%s			%s	%s\n", a.ID, a.Hostname, a.IP, a.IDC)))
 	}
 }
 
