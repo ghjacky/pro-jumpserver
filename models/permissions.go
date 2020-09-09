@@ -18,9 +18,9 @@ const (
 
 type Permission struct {
 	gorm.Model
-	Username string    `json:"username" gorm:"unique_index:user_perm_tag"`
-	Type     int8      `gorm:"not null" json:"type"`                                    // 权限类型：0: "tag" or 1: "host"
-	Tag      string    `gorm:"type:varchar(255);unique_index:user_perm_tag" json:"tag"` // 一个asset对应一个tag，一个tag对应多个server
+	Username string    `json:"username"`
+	Type     int8      `gorm:"not null" json:"type"`         // 权限类型：0: "tag" or 1: "host"
+	Tag      string    `gorm:"type:varchar(255)" json:"tag"` // 一个asset对应一个tag，一个tag对应多个server
 	Period   uint16    `json:"period"`
 	Expire   time.Time `json:"expire"`
 	Sudo     uint8     `json:"sudo" gorm:"default:0"` // 0: 不添加sudo权限 1: 添加sudo权限， 默认：0
@@ -38,8 +38,10 @@ func (p *Permission) BeforeCreate(db *gorm.DB) error {
 	// 判断该权限下的tag或者主机是否已存在于该用户的其他权限条目下
 	if p.Type == 1 {
 		perms := new(Permissions)
-		if e := perms.GetHostsPermByUsername(p.Username, db); e != nil {
+		if e := perms.GetHostsPermByUsername(p.Username, db); e != nil && !gorm.IsRecordNotFoundError(e) {
 			return e
+		} else if gorm.IsRecordNotFoundError(e) {
+			return nil
 		}
 		servers := perms.GetPermedHosts()
 		var serverMap = map[string]bool{}
@@ -52,6 +54,15 @@ func (p *Permission) BeforeCreate(db *gorm.DB) error {
 			if v, ok := serverMap[s.IDC+"-"+s.IP]; ok && v {
 				return fmt.Errorf("server (%s-%s) already permed", s.IDC, s.IP)
 			}
+		}
+	} else if p.Type == 0 {
+		perm := new(Permission)
+		if e := perm.GetPermByUsernameAndTag(p.Username, p.Tag, db); e != nil && !gorm.IsRecordNotFoundError(e) {
+			return e
+		} else if gorm.IsRecordNotFoundError(e) {
+			return nil
+		} else {
+			return fmt.Errorf("tag %s already permed", p.Tag)
 		}
 	}
 	return nil
@@ -118,12 +129,8 @@ func (p *Permission) IsExpire() bool {
 }
 
 func (ps *Permissions) GetHostsPermByUsername(username string, db *gorm.DB) (err error) {
-	var t = 1
-	e := db.Model(&Permission{}).Where("username = ?", username).Where("type = ?", t).Find(ps).Error
-	if e != nil {
-
-	}
-	return err
+	var t = PermissionTypeServer
+	return db.Model(&Permission{}).Where("username = ?", username).Where("type = ?", t).Find(ps).Error
 }
 
 func (ps *Permissions) GetPermedHosts() (ss Servers) {
@@ -131,4 +138,9 @@ func (ps *Permissions) GetPermedHosts() (ss Servers) {
 		ss = append(ss, p.Servers...)
 	}
 	return
+}
+
+func (p *Permission) GetPermByUsernameAndTag(username, tag string, db *gorm.DB) (err error) {
+	var t = PermissionTypeTag
+	return db.Model(&Permission{}).Where("username = ?", username).Where("tag = ?", tag).Where("type = ?", t).First(p).Error
 }
