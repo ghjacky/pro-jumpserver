@@ -102,7 +102,7 @@ func (js *JumpServer) Run() {
 		PasswordHandler:            checkUserPassword,
 		PublicKeyHandler:           checkUserPublicKey,
 		HostSigners:                []ssh.Signer{sshSigner},
-		Handler:                    sessionHandlerWrapper,
+		Handler:                    sessionHandler,
 	}
 	js.Server = sshServer
 	// change server status to running
