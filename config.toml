@@ -1,0 +1,66 @@
+[main]
+webServerAddr = '0.0.0.0:8083'
+JumpServerAddr = '0.0.0.0:2222'
+ws_path = "/zeus/socket.io"
+ws_static_path = "./asset"
+ws_listen = "0.0.0.0:18083"
+workDir = '/tmp/var/lib/zeus'
+dataDir = '/tmp/var/lib/zeus/data'
+playDir = '/tmp/var/lib/zeus/play'
+logfile = '/tmp/var/lib/zeus/server.log'
+idcs = ""
+host_key = '-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAzSxHzQudF64dp6AdHcR9wMdtNt5mzHFRk+DGkID8BVvq2Ppx
+yPit20ixLEoZCUysSnaySvhSAPfqTQowbeq0dF1TQqLEFsFl5hBw8ZTn1wYRi0Ke
+u/Df6Gt/ZzDoGIPA7NLBJJXsvY6tTr6sWJ6MOLQbPHhstpPHC87JtufRUwx+ByNw
+3GTd2/F3VDdj3Qe8T9vF9BIAX8fPT0jmyACGq4nGo5mKcabj9p0aJNg4oGc/f6Yb
+NMauxY816AO/+IL8RjBIqWCwNEheqkMP3GWDGtCkjzSw1IrXFkETUn6ZSNEe4Q+D
+kmCgVKNXuIRgw8Nq0cyTGTnEnwxq80Pv/ZX2EwIDAQABAoIBACb3lP91iDV6JTmz
+6DPCINwfRDfaj42erA647x180eC2r2jcUAYKbQKr0LKHtC+W91YBKyWf+fsjGsXc
+/Iuzuugq3WhXf4SO4KqMTtcjH9Ev3t8jHQC249/BouXXXQ1i4J5Z/MLVEqyBz5qY
+DiWanykZ095tRMB8Wp58fMUXTCNIccPlzSKJz0Kctkp3Zg6OHjUJqFWVd+7O1l93
+MiYRPjJZoTNCRIYZHJunTO/JDiJXrq6GmwfiV9OaJs7HuXHItbhUzHDxZ21WvDVe
+x8/LNs8XM4j8HYzfkCLv/+YEvd9cps7FQKhv/hSORI3wSlsujkAbjmlT0A3rUHyS
+rI3A+KkCgYEA01oD+ZJSada6eYF7sopkeIWcEH30un+dlr6Nil7faBtxQpFC4Iha
+Rzwj8p1vGY0YJakIxGlIvdI9d8tP+R/IqhsVMr0VJbAulDwOngwV9C8aCdPi083N
+e2sI6EyK8IX/JsD942MTkEhh30+cw7tEbh25HI9vHuvZU/+fsb+a/cUCgYEA+IQe
+7jj2GF0+Nmui23dI8ENvAXkJ+GSvJKEnQ7Q7lX2miq0OVVTaSQEP0U84oCWjXUDb
+31ne+7VPRCEiQleajgnmUJtItzwCZQLtMjACazr6pf+r+lW3JYaQ23LHwB+MBEWV
+CpXV8oXM/voM+luB0QaN81zuDl88lVbqigtFefcCgYEAw7N6MsH2ZeJa0N/AtlXH
+KoItPGglD/vS5B6V2SZ4H2IpwcXX8yjOz180uhZlJXesgFLAt331yS6/lAlCiB+S
+I1DolA7ZYgh9WO0za80tFun2Zls4kX7jYgB+Qvt9O7IXzL6vWLoJB3S+i5SgR+1D
+M+N54KQ/9JXWqxzrth8BWTECgYBhgt3sFVeiubt2eQd+27A37g25YzfhSgha9AzH
+CQo0Hwhg84RjQRchfBQryczrMbmHFrLvUYEn/L1sex/JLjyLrSC80iFXHGnIHrzZ
+a3MXhh3hUo+1ezqQs9tU8BWmsforlu3jKGW5cny8M3syJQOr88lxCy6xXvcTlfYT
+UlbhgwKBgCBQjsjwYaH1pof7qZXrjrXsXQXj+VZEJH24i7wnxi0fogJZCXoXK+01
+ed69xSuCav8kQu73EVc4tQoBKfQXoi1dOPv4/oG6cdqLxYayGL+rZfL6f84iBf6A
+aj6VQR1hZNOn9wiBARpZp7b8L62K2GmuEGKsfpwZ1Tij9RvjEsT+
+-----END RSA PRIVATE KEY-----'
+
+[mysql]
+user = 'root'
+host = '127.0.0.1'
+port = 3306
+password = 'xxxx'
+database = 'zeus'
+
+[redis]
+host = '127.0.0.1'
+port = 6379
+password = ''
+db = 0
+
+[ldap]
+#server="172.xx.xx.210"
+server="xx.xx.xx.xx"
+port=389
+dn="cn=eim,ou=xxxx,dc=xxxx,dc=cn"
+search_scope="OU=xxxx,DC=xxxx,DC=cn"
+bind_user="eim@xxxx"
+password="abc!@#456"
+
+[hera]
+name="hera"
+addr="http://127.0.0.1"
+api_prefix="/api/hera/v1"
+
